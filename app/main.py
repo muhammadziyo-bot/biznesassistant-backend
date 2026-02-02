@@ -108,7 +108,9 @@ app.add_middleware(
         "http://127.0.0.1:3000",  # Localhost alternative
         "https://biznesassistant.uz",  # Production domain
         "https://www.biznesassistant.uz",  # WWW subdomain
-        "https://your-app-name.netlify.app",  # Netlify preview/production
+        "https://bizcore-saas.netlify.com",  # Your Netlify frontend
+        "https://bizcore-saas.netlify.app",  # Alternative Netlify domain
+        "https://*.netlify.com",  # All Netlify domains
         # Add your staging domain here when ready
         # "https://staging.biznesassistant.uz",
     ],
