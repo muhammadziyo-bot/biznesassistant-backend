@@ -48,7 +48,11 @@ app.add_middleware(
         "127.0.0.1", 
         "biznesassistant.uz",
         "www.biznesassistant.uz",
-        "*.biznesassistant.uz"  # Allow subdomains
+        "*.biznesassistant.uz",  # Allow subdomains
+        "bizcore-saas.netlify.com",
+        "*.netlify.com",
+        "biznesassistant-backend.onrender.com",
+        "*.onrender.com"
     ]
 )
 
