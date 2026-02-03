@@ -7,6 +7,15 @@ import enum
 class TransactionType(enum.Enum):
     INCOME = "income"
     EXPENSE = "expense"
+    
+    @classmethod
+    def _missing_(cls, value):
+        # Handle case-insensitive lookup
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.upper() == value.upper():
+                    return member
+        return super()._missing_(value)
 
 class TransactionCategory(enum.Enum):
     # Income categories
@@ -23,6 +32,15 @@ class TransactionCategory(enum.Enum):
     SUPPLIES = "supplies"
     TAXES = "taxes"
     OTHER_EXPENSE = "other_expense"
+    
+    @classmethod
+    def _missing_(cls, value):
+        # Handle case-insensitive lookup
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.upper() == value.upper():
+                    return member
+        return super()._missing_(value)
 
 class Transaction(Base):
     __tablename__ = "transactions"
