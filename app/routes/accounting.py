@@ -20,10 +20,16 @@ async def create_transaction(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new transaction."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     db_transaction = Transaction(
         **transaction.dict(),
         user_id=current_user.id,
-        company_id=current_user.company_id or 1,  # Fallback to company ID 1 if None
+        company_id=current_user.company_id,
         tenant_id=tenant_id
     )
     
@@ -60,9 +66,15 @@ async def get_transactions(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Get transactions with filters."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     query = db.query(Transaction).filter(
         and_(
-            Transaction.company_id == (current_user.company_id or 1),
+            Transaction.company_id == current_user.company_id,
             Transaction.tenant_id == tenant_id
         )
     )
@@ -90,10 +102,16 @@ async def get_transaction(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Get transaction by ID."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     transaction = db.query(Transaction).filter(
         and_(
             Transaction.id == transaction_id,
-            Transaction.company_id == (current_user.company_id or 1),
+            Transaction.company_id == current_user.company_id,
             Transaction.tenant_id == tenant_id
         )
     ).first()
@@ -115,10 +133,16 @@ async def update_transaction(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Update transaction."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     transaction = db.query(Transaction).filter(
         and_(
             Transaction.id == transaction_id,
-            Transaction.company_id == (current_user.company_id or 1),
+            Transaction.company_id == current_user.company_id,
             Transaction.tenant_id == tenant_id
         )
     ).first()
@@ -160,9 +184,15 @@ async def get_accounting_summary(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Get accounting summary for dashboard."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     query = db.query(Transaction).filter(
         and_(
-            Transaction.company_id == (current_user.company_id or 1),
+            Transaction.company_id == current_user.company_id,
             Transaction.tenant_id == tenant_id
         )
     )
@@ -206,14 +236,14 @@ async def get_accounting_summary(
         "total_tax": float(tax_total),
         "income_by_category": [
             {
-                "category": cat[0].value,
+                "category": cat[0].value if hasattr(cat[0], 'value') else str(cat[0]),
                 "count": cat[1],
                 "total": float(cat[2])
             } for cat in income_by_category
         ],
         "expense_by_category": [
             {
-                "category": cat[0].value,
+                "category": cat[0].value if hasattr(cat[0], 'value') else str(cat[0]),
                 "count": cat[1],
                 "total": float(cat[2])
             } for cat in expense_by_category
