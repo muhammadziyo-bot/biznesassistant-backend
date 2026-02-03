@@ -3,25 +3,12 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
-class KPICategoryEnum(str, Enum):
-    REVENUE = "revenue"
-    EXPENSES = "expenses"
-    PROFIT = "profit"
-    CUSTOMERS = "customers"
-    INVOICES = "invoices"
-    LEADS = "leads"
-    DEALS = "deals"
-
-class KPIPeriodEnum(str, Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-    QUARTERLY = "quarterly"
-    YEARLY = "yearly"
+# Import enums from models to ensure consistency
+from app.models.kpi import KPICategory, KPIPeriod
 
 class KPIBase(BaseModel):
-    category: KPICategoryEnum
-    period: KPIPeriodEnum
+    category: KPICategory
+    period: KPIPeriod
     value: float
     previous_value: Optional[float] = None
     target_value: Optional[float] = None
@@ -47,8 +34,8 @@ class KPITrendPoint(BaseModel):
 class KPITrendResponse(BaseModel):
     id: int
     company_id: int
-    kpi_category: KPICategoryEnum
-    period_type: KPIPeriodEnum
+    kpi_category: KPICategory
+    period_type: KPIPeriod
     trend_data: List[KPITrendPoint]
     forecast_data: Optional[List[KPITrendPoint]] = None
     last_updated: datetime
@@ -59,7 +46,7 @@ class KPITrendResponse(BaseModel):
 class KPIAlertResponse(BaseModel):
     id: int
     company_id: int
-    kpi_category: KPICategoryEnum
+    kpi_category: KPICategory
     alert_type: str
     condition: str
     threshold_value: Optional[float] = None
@@ -82,13 +69,13 @@ class RoleBasedDashboardResponse(BaseModel):
     kpis: List[KPIResponse]
 
 class ForecastRequest(BaseModel):
-    kpi_category: KPICategoryEnum
-    period_type: KPIPeriodEnum
+    kpi_category: KPICategory
+    period_type: KPIPeriod
     forecast_periods: int = Field(default=3, ge=1, le=12)
 
 class ForecastResponse(BaseModel):
-    kpi_category: KPICategoryEnum
-    period_type: KPIPeriodEnum
+    kpi_category: KPICategory
+    period_type: KPIPeriod
     historical_data: List[KPITrendPoint]
     forecast_data: List[KPITrendPoint]
     confidence_score: float
