@@ -1,0 +1,44 @@
+services:
+  # Type of service
+  type: web
+  
+  # Name of your service
+  name: biznesassistant-backend
+  
+  # Runtime environment
+  env: python
+  
+  # Build configuration
+  buildCommand: pip install -r requirements.txt
+  
+  # Start command
+  startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  
+  # Health check
+  healthCheckPath: /health
+  
+  # Auto-deploy
+  autoDeploy: true
+  
+  # Environment variables (set these in Render dashboard)
+  envVars:
+    - key: DATABASE_URL
+      value: postgresql://muhammadziyo.jackthesparrow@db.gvnafmubmshaborclpya.supabase.co:5432/postgres?sslmode=require
+    - key: SECRET_KEY
+      value: KctdGJjaKFvOM1G1O5RK4-HL3jzgqUvwLA0Mg4W8suQ
+    - key: ALGORITHM
+      value: HS256
+    - key: ACCESS_TOKEN_EXPIRE_MINUTES
+      value: "30"
+  
+  # Instance configuration
+  instanceType: free
+  
+  # Region
+  region: oregon
+  
+  # Branch configuration
+  branch: main
+  
+  # Root directory
+  rootDir: .
