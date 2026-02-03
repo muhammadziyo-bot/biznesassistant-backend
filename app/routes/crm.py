@@ -14,7 +14,7 @@ from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse
 from app.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
 from app.schemas.deal import DealCreate, DealUpdate, DealResponse
 from app.schemas.activity import ActivityCreate, ActivityUpdate, ActivityResponse
-from app.utils.auth import get_current_active_user
+from app.utils.auth import get_current_active_user, get_current_tenant
 
 router = APIRouter()
 
@@ -23,13 +23,20 @@ router = APIRouter()
 async def create_contact(
     contact: ContactCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new contact."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     db_contact = Contact(
         **contact.dict(),
-        company_id=current_user.company_id or 1,
-        assigned_user_id=current_user.id
+        company_id=current_user.company_id,
+        tenant_id=tenant_id
     )
     db.add(db_contact)
     db.commit()
@@ -43,11 +50,22 @@ async def get_contacts(
     contact_type: Optional[ContactType] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get contacts with filters."""
-    company_id = current_user.company_id or 1
-    query = db.query(Contact).filter(Contact.company_id == company_id)
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
+    query = db.query(Contact).filter(
+        and_(
+            Contact.company_id == current_user.company_id,
+            Contact.tenant_id == tenant_id
+        )
+    )
     
     if contact_type:
         query = query.filter(Contact.type == contact_type)
@@ -67,14 +85,21 @@ async def get_contacts(
 async def get_contact(
     contact_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get contact by ID."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     contact = db.query(Contact).filter(
         and_(
             Contact.id == contact_id,
-            Contact.company_id == company_id
+            Contact.company_id == current_user.company_id,
+            Contact.tenant_id == tenant_id
         )
     ).first()
     
@@ -88,14 +113,21 @@ async def update_contact(
     contact_id: int,
     contact_update: ContactUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Update contact."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     contact = db.query(Contact).filter(
         and_(
             Contact.id == contact_id,
-            Contact.company_id == company_id
+            Contact.company_id == current_user.company_id,
+            Contact.tenant_id == tenant_id
         )
     ).first()
     
@@ -115,13 +147,20 @@ async def update_contact(
 async def create_lead(
     lead: LeadCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new lead."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     db_lead = Lead(
         **lead.dict(),
-        company_id=current_user.company_id or 1,
-        assigned_user_id=current_user.id
+        company_id=current_user.company_id,
+        tenant_id=tenant_id
     )
     db.add(db_lead)
     db.commit()

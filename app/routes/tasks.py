@@ -83,12 +83,18 @@ async def get_tasks(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Get tasks with filtering and pagination."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
     
     # Build query
     query = db.query(Task).filter(
-        Task.tenant_id == tenant_id,
-        Task.company_id == company_id
+        and_(
+            Task.tenant_id == tenant_id,
+            Task.company_id == current_user.company_id
+        )
     )
     
     # Apply filters

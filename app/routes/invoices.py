@@ -48,8 +48,14 @@ async def create_invoice(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new invoice."""
-    # Determine company_id (use fallback if None)
-    company_id = current_user.company_id or 1
+    # Validate company association
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
+    company_id = current_user.company_id
     
     try:
         # Generate invoice number with the correct company_id and tenant_id
@@ -59,7 +65,7 @@ async def create_invoice(
         db_invoice = Invoice(
             **invoice.dict(exclude={"items"}),
             invoice_number=invoice_number,
-            created_by_id=current_user.id,
+            created_by=current_user.id,  # Fixed: use created_by instead of created_by_id
             company_id=company_id,
             tenant_id=tenant_id
         )
