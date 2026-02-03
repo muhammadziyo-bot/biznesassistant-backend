@@ -3,7 +3,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/biznes_assistant"
+    DATABASE_URL: str = "postgresql://postgres:rakhmonov@localhost:5432/biznes_assistant"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
