@@ -174,11 +174,22 @@ async def get_leads(
     status: Optional[LeadStatus] = None,
     source: Optional[LeadSource] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get leads with filters."""
-    company_id = current_user.company_id or 1
-    query = db.query(Lead).filter(Lead.company_id == company_id)
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
+    query = db.query(Lead).filter(
+        and_(
+            Lead.company_id == current_user.company_id,
+            Lead.tenant_id == tenant_id
+        )
+    )
     
     if status:
         query = query.filter(Lead.status == status)
@@ -193,14 +204,21 @@ async def get_leads(
 async def get_lead(
     lead_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get lead by ID."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     lead = db.query(Lead).filter(
         and_(
             Lead.id == lead_id,
-            Lead.company_id == company_id
+            Lead.company_id == current_user.company_id,
+            Lead.tenant_id == tenant_id
         )
     ).first()
     
@@ -214,14 +232,21 @@ async def update_lead(
     lead_id: int,
     lead_update: LeadUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Update lead."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     lead = db.query(Lead).filter(
         and_(
             Lead.id == lead_id,
-            Lead.company_id == company_id
+            Lead.company_id == current_user.company_id,
+            Lead.tenant_id == tenant_id
         )
     ).first()
     
@@ -245,13 +270,20 @@ async def update_lead(
 async def create_deal(
     deal: DealCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new deal."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     db_deal = Deal(
         **deal.dict(),
-        company_id=current_user.company_id or 1,
-        assigned_user_id=current_user.id
+        company_id=current_user.company_id,
+        tenant_id=tenant_id
     )
     db.add(db_deal)
     db.commit()
@@ -265,11 +297,22 @@ async def get_deals(
     status: Optional[DealStatus] = None,
     priority: Optional[DealPriority] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get deals with filters."""
-    company_id = current_user.company_id or 1
-    query = db.query(Deal).filter(Deal.company_id == company_id)
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
+    query = db.query(Deal).filter(
+        and_(
+            Deal.company_id == current_user.company_id,
+            Deal.tenant_id == tenant_id
+        )
+    )
     
     if status:
         query = query.filter(Deal.status == status)
@@ -284,14 +327,21 @@ async def get_deals(
 async def get_deal(
     deal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get deal by ID."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     deal = db.query(Deal).filter(
         and_(
             Deal.id == deal_id,
-            Deal.company_id == company_id
+            Deal.company_id == current_user.company_id,
+            Deal.tenant_id == tenant_id
         )
     ).first()
     
@@ -305,14 +355,21 @@ async def update_deal(
     deal_id: int,
     deal_update: DealUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Update deal."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     deal = db.query(Deal).filter(
         and_(
             Deal.id == deal_id,
-            Deal.company_id == company_id
+            Deal.company_id == current_user.company_id,
+            Deal.tenant_id == tenant_id
         )
     ).first()
     
