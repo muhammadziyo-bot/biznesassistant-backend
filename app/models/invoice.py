@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -47,7 +47,7 @@ class Invoice(Base):
     payment_reference = Column(String, nullable=True)
     
     # Recurring invoice settings
-    is_recurring = Column(String, default=False)
+    is_recurring = Column(Boolean, default=False)
     recurring_interval = Column(String, nullable=True)  # daily, weekly, monthly, yearly
     recurring_end_date = Column(DateTime(timezone=True), nullable=True)
     

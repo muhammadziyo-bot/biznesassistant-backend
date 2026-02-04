@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -18,7 +18,7 @@ class Company(Base):
     mfo = Column(String, nullable=True)  # MFO code for Uzbek banks
     description = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
-    is_active = Column(String, default=True)
+    is_active = Column(Boolean, default=True)
     tenant_id = Column(Integer, ForeignKey("app.tenants.id"), nullable=True)  # Multi-tenant support
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

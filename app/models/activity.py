@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -42,7 +42,7 @@ class Activity(Base):
     
     # Reminder settings
     reminder_date = Column(DateTime(timezone=True), nullable=True)
-    reminder_sent = Column(String, default=False)
+    reminder_sent = Column(Boolean, default=False)
     
     # Additional information
     notes = Column(Text, nullable=True)

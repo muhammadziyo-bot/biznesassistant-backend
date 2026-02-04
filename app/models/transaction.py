@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Numeric, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, Numeric, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -51,12 +51,12 @@ class Transaction(Base):
     category = Column(Enum(TransactionCategory), nullable=False)
     description = Column(Text, nullable=True)
     date = Column(DateTime(timezone=True), nullable=False)
-    vat_included = Column(String, default=True)
+    vat_included = Column(Boolean, default=True)
     vat_amount = Column(Numeric(15, 2), default=0)
     tax_amount = Column(Numeric(15, 2), default=0)
     reference_number = Column(String, nullable=True)
     attachment_url = Column(String, nullable=True)
-    is_reconciled = Column(String, default=False)
+    is_reconciled = Column(Boolean, default=False)
     
     # Foreign keys
     user_id = Column(Integer, ForeignKey("app.app_users.id"), nullable=False)

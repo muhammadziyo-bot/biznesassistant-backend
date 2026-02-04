@@ -12,7 +12,7 @@ class UserRole(enum.Enum):
 
 class User(Base):
     """Application user linked to Supabase Auth user"""
-    __tablename__ = "app_users"
+    __tablename__ = "app.app_users"
     
     id = Column(Integer, primary_key=True, index=True)
     auth_id = Column(UUID, ForeignKey("auth.users.id", ondelete="CASCADE"), unique=True, nullable=False)

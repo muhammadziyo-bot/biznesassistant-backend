@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -26,7 +26,7 @@ class Contact(Base):
     website = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     type = Column(Enum(ContactType), default=ContactType.CUSTOMER)
-    is_active = Column(String, default=True)
+    is_active = Column(Boolean, default=True)
     
     # Social media
     telegram = Column(String, nullable=True)
