@@ -1,35 +1,38 @@
--- Migration Script for Supabase
+-- Supabase-Safe Migration Script for BiznesAssistant
 -- Run this in Supabase SQL Editor
--- Generated from SQLAlchemy models for BiznesAssistant
--- Generated on: 2026-02-03
+-- This script respects Supabase's built-in auth system and creates only your application tables
+-- Generated on: 2026-02-04
 
--- Enable required extensions
+-- Enable required extensions (safe)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Drop all tables in correct order (to avoid foreign key issues)
-DROP TABLE IF EXISTS task_comments CASCADE;
-DROP TABLE IF EXISTS recurring_schedules CASCADE;
-DROP TABLE IF EXISTS invoice_items CASCADE;
-DROP TABLE IF EXISTS activities CASCADE;
-DROP TABLE IF EXISTS deals CASCADE;
-DROP TABLE IF EXISTS leads CASCADE;
-DROP TABLE IF EXISTS contacts CASCADE;
-DROP TABLE IF EXISTS invoices CASCADE;
-DROP TABLE IF EXISTS transactions CASCADE;
-DROP TABLE IF EXISTS tasks CASCADE;
-DROP TABLE IF EXISTS templates CASCADE;
-DROP TABLE IF EXISTS kpi_alerts CASCADE;
-DROP TABLE IF EXISTS kpi_trends CASCADE;
-DROP TABLE IF EXISTS kpis CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS companies CASCADE;
-DROP TABLE IF EXISTS tenants CASCADE;
+-- Create your application schema (separate from auth)
+CREATE SCHEMA IF NOT EXISTS app;
 
--- Create tables in correct order
+-- Drop ONLY our application tables (NEVER touch auth schema)
+DROP TABLE IF EXISTS app.task_comments CASCADE;
+DROP TABLE IF EXISTS app.recurring_schedules CASCADE;
+DROP TABLE IF EXISTS app.invoice_items CASCADE;
+DROP TABLE IF EXISTS app.activities CASCADE;
+DROP TABLE IF EXISTS app.deals CASCADE;
+DROP TABLE IF EXISTS app.leads CASCADE;
+DROP TABLE IF EXISTS app.contacts CASCADE;
+DROP TABLE IF EXISTS app.invoices CASCADE;
+DROP TABLE IF EXISTS app.transactions CASCADE;
+DROP TABLE IF EXISTS app.tasks CASCADE;
+DROP TABLE IF EXISTS app.templates CASCADE;
+DROP TABLE IF EXISTS app.kpi_alerts CASCADE;
+DROP TABLE IF EXISTS app.kpi_trends CASCADE;
+DROP TABLE IF EXISTS app.kpis CASCADE;
+DROP TABLE IF EXISTS app.users CASCADE;
+DROP TABLE IF EXISTS app.companies CASCADE;
+DROP TABLE IF EXISTS app.tenants CASCADE;
+
+-- Create tables in correct order, in app schema
 
 -- Table: tenants
-CREATE TABLE tenants (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.tenants (
+    id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     tax_id VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -48,8 +51,8 @@ CREATE TABLE tenants (
 );
 
 -- Table: companies
-CREATE TABLE companies (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.companies (
+    id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
     tax_id VARCHAR UNIQUE NOT NULL,
     company_code VARCHAR UNIQUE NOT NULL,
@@ -62,35 +65,31 @@ CREATE TABLE companies (
     description TEXT,
     logo_url VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
-    tenant_id INTEGER REFERENCES tenants(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
--- Table: users
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
+-- Table: app_users (your application users, linked to Supabase auth.users)
+CREATE TABLE app.app_users (
+    id SERIAL PRIMARY KEY,
+    auth_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Link to Supabase auth
     email VARCHAR UNIQUE NOT NULL,
     username VARCHAR UNIQUE NOT NULL,
     full_name VARCHAR NOT NULL,
-    hashed_password VARCHAR NOT NULL,
     phone VARCHAR,
     role VARCHAR(50) DEFAULT 'manager',
     is_active BOOLEAN DEFAULT TRUE,
-    is_verified BOOLEAN DEFAULT FALSE,
-    email_verification_token VARCHAR(255),
-    email_verification_expires TIMESTAMPTZ,
-    email_verified_at TIMESTAMPTZ,
     language VARCHAR DEFAULT 'uz',
-    company_id INTEGER REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
+    company_id INTEGER REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: contacts
-CREATE TABLE contacts (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.contacts (
+    id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
     company_name VARCHAR,
     email VARCHAR,
@@ -108,16 +107,16 @@ CREATE TABLE contacts (
     instagram VARCHAR,
     facebook VARCHAR,
     linkedin VARCHAR,
-    assigned_user_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
+    assigned_user_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: leads
-CREATE TABLE leads (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.leads (
+    id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
     status VARCHAR(50) DEFAULT 'new',
@@ -135,17 +134,17 @@ CREATE TABLE leads (
     tags TEXT,
     follow_up_date TIMESTAMPTZ,
     converted_date TIMESTAMPTZ,
-    assigned_user_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
-    contact_id INTEGER REFERENCES contacts(id),
+    assigned_user_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
+    contact_id INTEGER REFERENCES app.contacts(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: deals
-CREATE TABLE deals (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.deals (
+    id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
     status VARCHAR(50) DEFAULT 'prospecting',
@@ -164,18 +163,18 @@ CREATE TABLE deals (
     lost_reason TEXT,
     tags TEXT,
     notes TEXT,
-    assigned_user_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
-    contact_id INTEGER REFERENCES contacts(id),
-    lead_id INTEGER REFERENCES leads(id),
+    assigned_user_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
+    contact_id INTEGER REFERENCES app.contacts(id),
+    lead_id INTEGER REFERENCES app.leads(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: activities
-CREATE TABLE activities (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.activities (
+    id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
     type VARCHAR(50) NOT NULL,
@@ -189,18 +188,18 @@ CREATE TABLE activities (
     reminder_date TIMESTAMPTZ,
     reminder_sent BOOLEAN DEFAULT FALSE,
     notes TEXT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    contact_id INTEGER REFERENCES contacts(id),
-    lead_id INTEGER REFERENCES leads(id),
-    deal_id INTEGER REFERENCES deals(id),
+    user_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    contact_id INTEGER REFERENCES app.contacts(id),
+    lead_id INTEGER REFERENCES app.leads(id),
+    deal_id INTEGER REFERENCES app.deals(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: invoices
-CREATE TABLE invoices (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.invoices (
+    id SERIAL PRIMARY KEY,
     invoice_number VARCHAR UNIQUE NOT NULL,
     status VARCHAR(50) DEFAULT 'draft',
     customer_name VARCHAR NOT NULL,
@@ -224,31 +223,31 @@ CREATE TABLE invoices (
     is_recurring BOOLEAN DEFAULT FALSE,
     recurring_interval VARCHAR,
     recurring_end_date TIMESTAMPTZ,
-    created_by_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
-    contact_id INTEGER REFERENCES contacts(id),
+    created_by_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
+    contact_id INTEGER REFERENCES app.contacts(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: invoice_items
-CREATE TABLE invoice_items (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.invoice_items (
+    id SERIAL PRIMARY KEY,
     description TEXT NOT NULL,
     quantity NUMERIC(10, 2) NOT NULL,
     unit_price NUMERIC(15, 2) NOT NULL,
     discount NUMERIC(5, 2) DEFAULT 0,
     vat_rate NUMERIC(5, 2) DEFAULT 12,
     line_total NUMERIC(15, 2) NOT NULL,
-    invoice_id INTEGER NOT NULL REFERENCES invoices(id),
+    invoice_id INTEGER NOT NULL REFERENCES app.invoices(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: transactions
-CREATE TABLE transactions (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.transactions (
+    id SERIAL PRIMARY KEY,
     amount NUMERIC(15, 2) NOT NULL,
     type VARCHAR(50) NOT NULL,
     category VARCHAR(50) NOT NULL,
@@ -260,44 +259,44 @@ CREATE TABLE transactions (
     reference_number VARCHAR,
     attachment_url VARCHAR,
     is_reconciled BOOLEAN DEFAULT FALSE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
-    contact_id INTEGER REFERENCES contacts(id),
-    invoice_id INTEGER REFERENCES invoices(id),
+    user_id INTEGER NOT NULL REFERENCES app.app_users(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
+    contact_id INTEGER REFERENCES app.contacts(id),
+    invoice_id INTEGER REFERENCES app.invoices(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
 
 -- Table: tasks
-CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.tasks (
+    id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(20) DEFAULT 'todo' NOT NULL,
     priority VARCHAR(20) DEFAULT 'medium' NOT NULL,
-    assigned_to INTEGER REFERENCES users(id),
-    created_by INTEGER NOT NULL REFERENCES users(id),
+    assigned_to INTEGER REFERENCES app.app_users(id),
+    created_by INTEGER NOT NULL REFERENCES app.app_users(id),
     due_date TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    tenant_id INTEGER NOT NULL REFERENCES tenants(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
+    tenant_id INTEGER NOT NULL REFERENCES app.tenants(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Table: task_comments
-CREATE TABLE task_comments (
-    id INTEGER PRIMARY KEY,
-    task_id INTEGER NOT NULL REFERENCES tasks(id),
+CREATE TABLE app.task_comments (
+    id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL REFERENCES app.tasks(id),
     content TEXT NOT NULL,
-    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_by INTEGER NOT NULL REFERENCES app.app_users(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Table: templates
-CREATE TABLE templates (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE app.templates (
+    id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL,
     description TEXT,
@@ -305,27 +304,27 @@ CREATE TABLE templates (
     is_recurring BOOLEAN DEFAULT FALSE NOT NULL,
     recurring_interval VARCHAR(20),
     recurring_day INTEGER,
-    created_by INTEGER NOT NULL REFERENCES users(id),
-    tenant_id INTEGER NOT NULL REFERENCES tenants(id),
-    company_id INTEGER NOT NULL REFERENCES companies(id),
+    created_by INTEGER NOT NULL REFERENCES app.app_users(id),
+    tenant_id INTEGER NOT NULL REFERENCES app.tenants(id),
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Table: recurring_schedules
-CREATE TABLE recurring_schedules (
-    id INTEGER PRIMARY KEY,
-    template_id INTEGER NOT NULL REFERENCES templates(id),
+CREATE TABLE app.recurring_schedules (
+    id SERIAL PRIMARY KEY,
+    template_id INTEGER NOT NULL REFERENCES app.templates(id),
     next_execution_date TIMESTAMPTZ NOT NULL,
     last_execution_date TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE NOT NULL
 );
 
 -- Table: kpis
-CREATE TABLE kpis (
-    id INTEGER PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
+CREATE TABLE app.kpis (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
+    tenant_id INTEGER REFERENCES app.tenants(id),
     category VARCHAR(50) NOT NULL,
     period VARCHAR(50) NOT NULL,
     value FLOAT NOT NULL,
@@ -337,9 +336,9 @@ CREATE TABLE kpis (
 );
 
 -- Table: kpi_trends
-CREATE TABLE kpi_trends (
-    id INTEGER PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id),
+CREATE TABLE app.kpi_trends (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
     kpi_category VARCHAR(50) NOT NULL,
     period_type VARCHAR(50) NOT NULL,
     trend_data TEXT NOT NULL,
@@ -348,9 +347,9 @@ CREATE TABLE kpi_trends (
 );
 
 -- Table: kpi_alerts
-CREATE TABLE kpi_alerts (
-    id INTEGER PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES companies(id),
+CREATE TABLE app.kpi_alerts (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER NOT NULL REFERENCES app.companies(id),
     kpi_category VARCHAR(50) NOT NULL,
     alert_type VARCHAR NOT NULL,
     condition VARCHAR NOT NULL,
@@ -360,140 +359,145 @@ CREATE TABLE kpi_alerts (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_tenants_email ON tenants(email);
-CREATE INDEX idx_tenants_tax_id ON tenants(tax_id);
-CREATE INDEX idx_tenants_created_at ON tenants(created_at);
+CREATE INDEX idx_app_tenants_email ON app.tenants(email);
+CREATE INDEX idx_app_tenants_tax_id ON app.tenants(tax_id);
+CREATE INDEX idx_app_tenants_created_at ON app.tenants(created_at);
 
-CREATE INDEX idx_companies_tenant_id ON companies(tenant_id);
-CREATE INDEX idx_companies_email ON companies(email);
-CREATE INDEX idx_companies_tax_id ON companies(tax_id);
-CREATE INDEX idx_companies_company_code ON companies(company_code);
-CREATE INDEX idx_companies_created_at ON companies(created_at);
+CREATE INDEX idx_app_companies_tenant_id ON app.companies(tenant_id);
+CREATE INDEX idx_app_companies_email ON app.companies(email);
+CREATE INDEX idx_app_companies_tax_id ON app.companies(tax_id);
+CREATE INDEX idx_app_companies_company_code ON app.companies(company_code);
+CREATE INDEX idx_app_companies_created_at ON app.companies(created_at);
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_company_id ON users(company_id);
-CREATE INDEX idx_users_tenant_id ON users(tenant_id);
-CREATE INDEX idx_users_created_at ON users(created_at);
+CREATE INDEX idx_app_app_users_auth_id ON app.app_users(auth_id);
+CREATE INDEX idx_app_app_users_email ON app.app_users(email);
+CREATE INDEX idx_app_app_users_username ON app.app_users(username);
+CREATE INDEX idx_app_app_users_company_id ON app.app_users(company_id);
+CREATE INDEX idx_app_app_users_tenant_id ON app.app_users(tenant_id);
+CREATE INDEX idx_app_app_users_created_at ON app.app_users(created_at);
 
-CREATE INDEX idx_contacts_company_id ON contacts(company_id);
-CREATE INDEX idx_contacts_assigned_user_id ON contacts(assigned_user_id);
-CREATE INDEX idx_contacts_tenant_id ON contacts(tenant_id);
-CREATE INDEX idx_contacts_email ON contacts(email);
-CREATE INDEX idx_contacts_created_at ON contacts(created_at);
+CREATE INDEX idx_app_contacts_company_id ON app.contacts(company_id);
+CREATE INDEX idx_app_contacts_assigned_user_id ON app.contacts(assigned_user_id);
+CREATE INDEX idx_app_contacts_tenant_id ON app.contacts(tenant_id);
+CREATE INDEX idx_app_contacts_email ON app.contacts(email);
+CREATE INDEX idx_app_contacts_created_at ON app.contacts(created_at);
 
-CREATE INDEX idx_leads_company_id ON leads(company_id);
-CREATE INDEX idx_leads_assigned_user_id ON leads(assigned_user_id);
-CREATE INDEX idx_leads_contact_id ON leads(contact_id);
-CREATE INDEX idx_leads_tenant_id ON leads(tenant_id);
-CREATE INDEX idx_leads_status ON leads(status);
-CREATE INDEX idx_leads_created_at ON leads(created_at);
+CREATE INDEX idx_app_leads_company_id ON app.leads(company_id);
+CREATE INDEX idx_app_leads_assigned_user_id ON app.leads(assigned_user_id);
+CREATE INDEX idx_app_leads_contact_id ON app.leads(contact_id);
+CREATE INDEX idx_app_leads_tenant_id ON app.leads(tenant_id);
+CREATE INDEX idx_app_leads_status ON app.leads(status);
+CREATE INDEX idx_app_leads_created_at ON app.leads(created_at);
 
-CREATE INDEX idx_deals_company_id ON deals(company_id);
-CREATE INDEX idx_deals_assigned_user_id ON deals(assigned_user_id);
-CREATE INDEX idx_deals_contact_id ON deals(contact_id);
-CREATE INDEX idx_deals_lead_id ON deals(lead_id);
-CREATE INDEX idx_deals_tenant_id ON deals(tenant_id);
-CREATE INDEX idx_deals_status ON deals(status);
-CREATE INDEX idx_deals_created_at ON deals(created_at);
+CREATE INDEX idx_app_deals_company_id ON app.deals(company_id);
+CREATE INDEX idx_app_deals_assigned_user_id ON app.deals(assigned_user_id);
+CREATE INDEX idx_app_deals_contact_id ON app.deals(contact_id);
+CREATE INDEX idx_app_deals_lead_id ON app.deals(lead_id);
+CREATE INDEX idx_app_deals_tenant_id ON app.deals(tenant_id);
+CREATE INDEX idx_app_deals_status ON app.deals(status);
+CREATE INDEX idx_app_deals_created_at ON app.deals(created_at);
 
-CREATE INDEX idx_activities_user_id ON activities(user_id);
-CREATE INDEX idx_activities_company_id ON activities(company_id);
-CREATE INDEX idx_activities_contact_id ON activities(contact_id);
-CREATE INDEX idx_activities_lead_id ON activities(lead_id);
-CREATE INDEX idx_activities_deal_id ON activities(deal_id);
-CREATE INDEX idx_activities_status ON activities(status);
-CREATE INDEX idx_activities_created_at ON activities(created_at);
+CREATE INDEX idx_app_activities_user_id ON app.activities(user_id);
+CREATE INDEX idx_app_activities_company_id ON app.activities(company_id);
+CREATE INDEX idx_app_activities_contact_id ON app.activities(contact_id);
+CREATE INDEX idx_app_activities_lead_id ON app.activities(lead_id);
+CREATE INDEX idx_app_activities_deal_id ON app.activities(deal_id);
+CREATE INDEX idx_app_activities_status ON app.activities(status);
+CREATE INDEX idx_app_activities_created_at ON app.activities(created_at);
 
-CREATE INDEX idx_invoices_created_by_id ON invoices(created_by_id);
-CREATE INDEX idx_invoices_company_id ON invoices(company_id);
-CREATE INDEX idx_invoices_contact_id ON invoices(contact_id);
-CREATE INDEX idx_invoices_tenant_id ON invoices(tenant_id);
-CREATE INDEX idx_invoices_status ON invoices(status);
-CREATE INDEX idx_invoices_invoice_number ON invoices(invoice_number);
-CREATE INDEX idx_invoices_created_at ON invoices(created_at);
+CREATE INDEX idx_app_invoices_created_by_id ON app.invoices(created_by_id);
+CREATE INDEX idx_app_invoices_company_id ON app.invoices(company_id);
+CREATE INDEX idx_app_invoices_contact_id ON app.invoices(contact_id);
+CREATE INDEX idx_app_invoices_tenant_id ON app.invoices(tenant_id);
+CREATE INDEX idx_app_invoices_status ON app.invoices(status);
+CREATE INDEX idx_app_invoices_invoice_number ON app.invoices(invoice_number);
+CREATE INDEX idx_app_invoices_created_at ON app.invoices(created_at);
 
-CREATE INDEX idx_invoice_items_invoice_id ON invoice_items(invoice_id);
-CREATE INDEX idx_invoice_items_created_at ON invoice_items(created_at);
+CREATE INDEX idx_app_invoice_items_invoice_id ON app.invoice_items(invoice_id);
+CREATE INDEX idx_app_invoice_items_created_at ON app.invoice_items(created_at);
 
-CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_company_id ON transactions(company_id);
-CREATE INDEX idx_transactions_contact_id ON transactions(contact_id);
-CREATE INDEX idx_transactions_invoice_id ON transactions(invoice_id);
-CREATE INDEX idx_transactions_tenant_id ON transactions(tenant_id);
-CREATE INDEX idx_transactions_type ON transactions(type);
-CREATE INDEX idx_transactions_category ON transactions(category);
-CREATE INDEX idx_transactions_date ON transactions(date);
-CREATE INDEX idx_transactions_created_at ON transactions(created_at);
+CREATE INDEX idx_app_transactions_user_id ON app.transactions(user_id);
+CREATE INDEX idx_app_transactions_company_id ON app.transactions(company_id);
+CREATE INDEX idx_app_transactions_contact_id ON app.transactions(contact_id);
+CREATE INDEX idx_app_transactions_invoice_id ON app.transactions(invoice_id);
+CREATE INDEX idx_app_transactions_tenant_id ON app.transactions(tenant_id);
+CREATE INDEX idx_app_transactions_type ON app.transactions(type);
+CREATE INDEX idx_app_transactions_category ON app.transactions(category);
+CREATE INDEX idx_app_transactions_date ON app.transactions(date);
+CREATE INDEX idx_app_transactions_created_at ON app.transactions(created_at);
 
-CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
-CREATE INDEX idx_tasks_created_by ON tasks(created_by);
-CREATE INDEX idx_tasks_tenant_id ON tasks(tenant_id);
-CREATE INDEX idx_tasks_company_id ON tasks(company_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_tasks_priority ON tasks(priority);
-CREATE INDEX idx_tasks_due_date ON tasks(due_date);
-CREATE INDEX idx_tasks_created_at ON tasks(created_at);
+CREATE INDEX idx_app_tasks_assigned_to ON app.tasks(assigned_to);
+CREATE INDEX idx_app_tasks_created_by ON app.tasks(created_by);
+CREATE INDEX idx_app_tasks_tenant_id ON app.tasks(tenant_id);
+CREATE INDEX idx_app_tasks_company_id ON app.tasks(company_id);
+CREATE INDEX idx_app_tasks_status ON app.tasks(status);
+CREATE INDEX idx_app_tasks_priority ON app.tasks(priority);
+CREATE INDEX idx_app_tasks_due_date ON app.tasks(due_date);
+CREATE INDEX idx_app_tasks_created_at ON app.tasks(created_at);
 
-CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
-CREATE INDEX idx_task_comments_created_by ON task_comments(created_by);
-CREATE INDEX idx_task_comments_created_at ON task_comments(created_at);
+CREATE INDEX idx_app_task_comments_task_id ON app.task_comments(task_id);
+CREATE INDEX idx_app_task_comments_created_by ON app.task_comments(created_by);
+CREATE INDEX idx_app_task_comments_created_at ON app.task_comments(created_at);
 
-CREATE INDEX idx_templates_created_by ON templates(created_by);
-CREATE INDEX idx_templates_tenant_id ON templates(tenant_id);
-CREATE INDEX idx_templates_company_id ON templates(company_id);
-CREATE INDEX idx_templates_type ON templates(type);
-CREATE INDEX idx_templates_created_at ON templates(created_at);
+CREATE INDEX idx_app_templates_created_by ON app.templates(created_by);
+CREATE INDEX idx_app_templates_tenant_id ON app.templates(tenant_id);
+CREATE INDEX idx_app_templates_company_id ON app.templates(company_id);
+CREATE INDEX idx_app_templates_type ON app.templates(type);
+CREATE INDEX idx_app_templates_created_at ON app.templates(created_at);
 
-CREATE INDEX idx_recurring_schedules_template_id ON recurring_schedules(template_id);
-CREATE INDEX idx_recurring_schedules_next_execution ON recurring_schedules(next_execution_date);
+CREATE INDEX idx_app_recurring_schedules_template_id ON app.recurring_schedules(template_id);
+CREATE INDEX idx_app_recurring_schedules_next_execution ON app.recurring_schedules(next_execution_date);
 
-CREATE INDEX idx_kpis_company_id ON kpis(company_id);
-CREATE INDEX idx_kpis_tenant_id ON kpis(tenant_id);
-CREATE INDEX idx_kpis_category ON kpis(category);
-CREATE INDEX idx_kpis_period ON kpis(period);
-CREATE INDEX idx_kpis_date ON kpis(date);
-CREATE INDEX idx_kpis_created_at ON kpis(created_at);
+CREATE INDEX idx_app_kpis_company_id ON app.kpis(company_id);
+CREATE INDEX idx_app_kpis_tenant_id ON app.kpis(tenant_id);
+CREATE INDEX idx_app_kpis_category ON app.kpis(category);
+CREATE INDEX idx_app_kpis_period ON app.kpis(period);
+CREATE INDEX idx_app_kpis_date ON app.kpis(date);
+CREATE INDEX idx_app_kpis_created_at ON app.kpis(created_at);
 
-CREATE INDEX idx_kpi_trends_company_id ON kpi_trends(company_id);
-CREATE INDEX idx_kpi_trends_kpi_category ON kpi_trends(kpi_category);
-CREATE INDEX idx_kpi_trends_period_type ON kpi_trends(period_type);
+CREATE INDEX idx_app_kpi_trends_company_id ON app.kpi_trends(company_id);
+CREATE INDEX idx_app_kpi_trends_kpi_category ON app.kpi_trends(kpi_category);
+CREATE INDEX idx_app_kpi_trends_period_type ON app.kpi_trends(period_type);
 
-CREATE INDEX idx_kpi_alerts_company_id ON kpi_alerts(company_id);
-CREATE INDEX idx_kpi_alerts_kpi_category ON kpi_alerts(kpi_category);
-CREATE INDEX idx_kpi_alerts_created_at ON kpi_alerts(created_at);
+CREATE INDEX idx_app_kpi_alerts_company_id ON app.kpi_alerts(company_id);
+CREATE INDEX idx_app_kpi_alerts_kpi_category ON app.kpi_alerts(kpi_category);
+CREATE INDEX idx_app_kpi_alerts_created_at ON app.kpi_alerts(created_at);
 
--- Set up Row Level Security (RLS) for multi-tenant isolation
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invoice_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE recurring_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE kpis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE kpi_trends ENABLE ROW LEVEL SECURITY;
-ALTER TABLE kpi_alerts ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS) for our app schema only
+ALTER TABLE app.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.app_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.invoice_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.task_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.recurring_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.kpis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.kpi_trends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.kpi_alerts ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies (basic example - adjust according to your auth strategy)
-CREATE POLICY "Users can view own tenant data" ON tenants
-    USING (auth.uid()::text = id::text);
+-- Create RLS policies that work WITH Supabase Auth
+CREATE POLICY "Users can view own app_users" ON app.app_users
+    USING (auth_id = auth.uid());
 
-CREATE POLICY "Users can view own company data" ON companies
-    USING (tenant_id IN (SELECT id FROM tenants WHERE auth.uid()::text = id::text));
+CREATE POLICY "Users can update own app_users" ON app.app_users
+    USING (auth_id = auth.uid())
+    WITH CHECK (auth_id = auth.uid());
 
--- Add similar policies for other tables based on tenant_id
--- This is a basic example - you may want more sophisticated policies
+CREATE POLICY "Users can view tenant data" ON app.tenants
+    USING (id IN (SELECT tenant_id FROM app.app_users WHERE auth_id = auth.uid()));
+
+CREATE POLICY "Users can view company data" ON app.companies
+    USING (tenant_id IN (SELECT tenant_id FROM app.app_users WHERE auth_id = auth.uid()));
 
 -- Create functions for automatic timestamp updates
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION app.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -502,44 +506,59 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at columns
-CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON app.tenants
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON app.companies
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_app_users_updated_at BEFORE UPDATE ON app.app_users
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON app.contacts
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON app.leads
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON app.deals
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_activities_updated_at BEFORE UPDATE ON activities
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_activities_updated_at BEFORE UPDATE ON app.activities
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON app.invoices
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_invoice_items_updated_at BEFORE UPDATE ON invoice_items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoice_items_updated_at BEFORE UPDATE ON app.invoice_items
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON app.transactions
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON app.tasks
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON app.templates
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
-CREATE TRIGGER update_kpis_updated_at BEFORE UPDATE ON kpis
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_kpis_updated_at BEFORE UPDATE ON app.kpis
+    FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
+
+-- Create trigger to automatically create app_user when auth.user is created
+CREATE OR REPLACE FUNCTION app.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO app.app_users (auth_id, email, full_name, created_at)
+    VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), NOW());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION app.handle_new_user();
 
 -- Migration completed successfully!
--- Your BiznesAssistant database is now ready for use in Supabase.
+-- Supabase Auth schema is untouched and working
+-- Your application tables are in app schema and properly linked to auth.users
