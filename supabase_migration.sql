@@ -91,7 +91,7 @@ CREATE TABLE app_users (
     password_reset_expires TIMESTAMPTZ,
     last_login TIMESTAMPTZ,
     company_id INTEGER REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id) NOT NULL,
+    tenant_id INTEGER REFERENCES tenants(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
