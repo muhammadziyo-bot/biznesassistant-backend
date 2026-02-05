@@ -36,7 +36,8 @@ async def create_contact(
     db_contact = Contact(
         **contact.dict(),
         company_id=current_user.company_id,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        assigned_user_id=current_user.id
     )
     db.add(db_contact)
     db.commit()
@@ -160,7 +161,8 @@ async def create_lead(
     db_lead = Lead(
         **lead.dict(),
         company_id=current_user.company_id,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        assigned_user_id=current_user.id
     )
     db.add(db_lead)
     db.commit()
@@ -283,7 +285,8 @@ async def create_deal(
     db_deal = Deal(
         **deal.dict(),
         company_id=current_user.company_id,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        assigned_user_id=current_user.id
     )
     db.add(db_deal)
     db.commit()
@@ -393,13 +396,20 @@ async def update_deal(
 async def create_activity(
     activity: ActivityCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Create a new activity."""
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     db_activity = Activity(
         **activity.dict(),
         user_id=current_user.id,
-        company_id=current_user.company_id or 1
+        company_id=current_user.company_id
     )
     db.add(db_activity)
     db.commit()

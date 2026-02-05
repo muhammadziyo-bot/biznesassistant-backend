@@ -65,7 +65,7 @@ async def create_invoice(
         db_invoice = Invoice(
             **invoice.dict(exclude={"items"}),
             invoice_number=invoice_number,
-            created_by=current_user.id,  # Fixed: use created_by instead of created_by_id
+            created_by_id=current_user.id,
             company_id=company_id,
             tenant_id=tenant_id
         )
