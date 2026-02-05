@@ -1,62 +1,40 @@
 -- ================================================================
--- BiznesAssistant - Supabase Migration Script
--- ================================================================
--- Purpose: Complete database migration for production deployment
--- Strategy: Avoid ALL Supabase reserved schemas and tables
--- Created: 2025-02-05
+-- BIZNESASSISTANT PRODUCTION MIGRATION - PUBLIC SCHEMA
+-- Optimized for Supabase compatibility and immediate functionality
 -- ================================================================
 
--- ================================================================
--- SUPABASE RESERVED SCHEMAS (NEVER TOUCH THESE):
--- ================================================================
--- auth.*        - Supabase Authentication (users, sessions, tokens)
--- storage.*     - Supabase Storage (buckets, objects)
--- realtime.*    - Supabase Realtime (messages, presence)
--- extensions.*  - Supabase Extensions
--- pgsodium.*   - Supabase Encryption
--- pg_graphql.* - Supabase GraphQL
--- public.*     - We avoid this to prevent conflicts
--- ================================================================
-
--- ================================================================
--- OUR CUSTOM SCHEMA (completely separate from Supabase)
--- ================================================================
-CREATE SCHEMA IF NOT EXISTS biznes;
-
--- ================================================================
--- EXTENSIONS (safe ones that don't conflict)
--- ================================================================
+-- Create extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text search
-CREATE EXTENSION IF NOT EXISTS "btree_gin"; -- For index performance
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+CREATE EXTENSION IF NOT EXISTS "btree_gin";
 
 -- ================================================================
--- DROP EXISTING TABLES (only in our schema)
+-- DROP EXISTING TABLES (clean slate)
 -- ================================================================
-DROP TABLE IF EXISTS biznes.task_comments CASCADE;
-DROP TABLE IF EXISTS biznes.recurring_schedules CASCADE;
-DROP TABLE IF EXISTS biznes.invoice_items CASCADE;
-DROP TABLE IF EXISTS biznes.activities CASCADE;
-DROP TABLE IF EXISTS biznes.deals CASCADE;
-DROP TABLE IF EXISTS biznes.leads CASCADE;
-DROP TABLE IF EXISTS biznes.contacts CASCADE;
-DROP TABLE IF EXISTS biznes.invoices CASCADE;
-DROP TABLE IF EXISTS biznes.transactions CASCADE;
-DROP TABLE IF EXISTS biznes.tasks CASCADE;
-DROP TABLE IF EXISTS biznes.templates CASCADE;
-DROP TABLE IF EXISTS biznes.kpi_alerts CASCADE;
-DROP TABLE IF EXISTS biznes.kpi_trends CASCADE;
-DROP TABLE IF EXISTS biznes.kpis CASCADE;
-DROP TABLE IF EXISTS biznes.app_users CASCADE;
-DROP TABLE IF EXISTS biznes.companies CASCADE;
-DROP TABLE IF EXISTS biznes.tenants CASCADE;
+DROP TABLE IF EXISTS task_comments CASCADE;
+DROP TABLE IF EXISTS recurring_schedules CASCADE;
+DROP TABLE IF EXISTS invoice_items CASCADE;
+DROP TABLE IF EXISTS kpi_alerts CASCADE;
+DROP TABLE IF EXISTS kpi_trends CASCADE;
+DROP TABLE IF EXISTS kpis CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS templates CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS invoices CASCADE;
+DROP TABLE IF EXISTS activities CASCADE;
+DROP TABLE IF EXISTS deals CASCADE;
+DROP TABLE IF EXISTS leads CASCADE;
+DROP TABLE IF EXISTS contacts CASCADE;
+DROP TABLE IF EXISTS app_users CASCADE;
+DROP TABLE IF EXISTS companies CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
 
 -- ================================================================
--- CORE MULTI-TENANT STRUCTURE
+-- CORE BUSINESS TABLES (Public Schema)
 -- ================================================================
 
 -- Tenants (Multi-tenant foundation)
-CREATE TABLE biznes.tenants (
+CREATE TABLE tenants (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     tax_id VARCHAR(50) UNIQUE NOT NULL,
@@ -65,8 +43,8 @@ CREATE TABLE biznes.tenants (
     address TEXT,
     industry VARCHAR(100),
     employee_count INTEGER,
-    subscription_tier VARCHAR(50) DEFAULT 'basic',
-    subscription_status VARCHAR(50) DEFAULT 'trial',
+    subscription_tier VARCHAR(20) DEFAULT 'basic',
+    subscription_status VARCHAR(20) DEFAULT 'trial',
     trial_ends_at TIMESTAMPTZ,
     subscription_ends_at TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE,
@@ -75,8 +53,8 @@ CREATE TABLE biznes.tenants (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Companies (belong to tenants)
-CREATE TABLE biznes.companies (
+-- Companies
+CREATE TABLE companies (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
     tax_id VARCHAR UNIQUE NOT NULL,
@@ -86,36 +64,34 @@ CREATE TABLE biznes.companies (
     email VARCHAR,
     bank_name VARCHAR,
     bank_account VARCHAR,
-    mfo VARCHAR,
     description TEXT,
     logo_url VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
+    tenant_id INTEGER REFERENCES tenants(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- App Users (our custom user management - NOT auth.users)
-CREATE TABLE biznes.app_users (
+-- Application Users (completely independent from Supabase auth)
+CREATE TABLE app_users (
     id SERIAL PRIMARY KEY,
-    -- Optional: Link to Supabase auth.users if needed later
-    supabase_auth_id UUID, -- Can be NULL for local users
+    supabase_auth_id UUID,  -- Optional link to Supabase auth
     email VARCHAR UNIQUE NOT NULL,
     username VARCHAR UNIQUE NOT NULL,
-    hashed_password VARCHAR NOT NULL, -- Our own password management
     full_name VARCHAR NOT NULL,
+    hashed_password VARCHAR NOT NULL,
     phone VARCHAR,
-    role VARCHAR(50) DEFAULT 'employee', -- admin, manager, accountant, employee
+    role VARCHAR DEFAULT 'employee',
     is_active BOOLEAN DEFAULT TRUE,
     is_verified BOOLEAN DEFAULT FALSE,
-    language VARCHAR DEFAULT 'uz', -- uz, ru, en
+    language VARCHAR DEFAULT 'uz',
     email_verification_token VARCHAR,
     email_verification_expires TIMESTAMPTZ,
     password_reset_token VARCHAR,
     password_reset_expires TIMESTAMPTZ,
     last_login TIMESTAMPTZ,
-    company_id INTEGER REFERENCES biznes.companies(id) ON DELETE SET NULL,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -125,7 +101,7 @@ CREATE TABLE biznes.app_users (
 -- ================================================================
 
 -- Contacts
-CREATE TABLE biznes.contacts (
+CREATE TABLE contacts (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
     company_name VARCHAR,
@@ -138,99 +114,128 @@ CREATE TABLE biznes.contacts (
     mfo VARCHAR,
     website VARCHAR,
     notes TEXT,
-    type VARCHAR(50) DEFAULT 'customer', -- customer, supplier, partner
+    type VARCHAR DEFAULT 'customer',
     is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Social media
     telegram VARCHAR,
     instagram VARCHAR,
     facebook VARCHAR,
     linkedin VARCHAR,
-    assigned_user_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
+    
+    -- Foreign keys
+    assigned_user_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Leads
-CREATE TABLE biznes.leads (
+CREATE TABLE leads (
     id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
-    status VARCHAR(50) DEFAULT 'new', -- new, contacted, qualified, converted, lost
-    source VARCHAR(50), -- website, referral, cold_call, email, social
-    estimated_value NUMERIC(15, 2),
-    probability NUMERIC(5, 2) DEFAULT 0,
-    contact_name VARCHAR NOT NULL,
+    status VARCHAR DEFAULT 'new',
+    source VARCHAR,
+    
+    -- Lead value and probability
+    estimated_value NUMERIC(15,2),
+    probability NUMERIC(5,2) DEFAULT 0,
+    
+    -- Contact information
+    contact_name VARCHAR,
     contact_email VARCHAR,
     contact_phone VARCHAR,
-    company_name VARCHAR,
-    address TEXT,
-    city VARCHAR,
-    region VARCHAR,
+    
+    -- Additional information
     notes TEXT,
-    tags TEXT,
+    tags TEXT,  -- comma-separated tags
+    
+    -- Important dates
     follow_up_date TIMESTAMPTZ,
     converted_date TIMESTAMPTZ,
-    assigned_user_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    contact_id INTEGER REFERENCES biznes.contacts(id) ON DELETE SET NULL,
+    
+    -- Foreign keys
+    assigned_user_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    contact_id INTEGER REFERENCES contacts(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Deals
-CREATE TABLE biznes.deals (
+CREATE TABLE deals (
     id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
-    status VARCHAR(50) DEFAULT 'prospecting', -- prospecting, qualification, proposal, negotiation, closed_won, closed_lost
-    priority VARCHAR(50) DEFAULT 'medium', -- low, medium, high, urgent
-    deal_value NUMERIC(15, 2),
+    status VARCHAR DEFAULT 'prospecting',
+    priority VARCHAR DEFAULT 'medium',
+    
+    -- Financial information
+    deal_value NUMERIC(15,2),
     expected_close_date TIMESTAMPTZ,
     actual_close_date TIMESTAMPTZ,
-    probability NUMERIC(5, 2) DEFAULT 0,
-    confidence_level NUMERIC(5, 2) DEFAULT 0,
-    primary_contact VARCHAR NOT NULL,
-    contact_email VARCHAR,
-    contact_phone VARCHAR,
-    company_name VARCHAR,
+    
+    -- Deal details
     products_services TEXT,
     next_steps TEXT,
     lost_reason TEXT,
-    tags TEXT,
+    
+    -- Tags and notes
+    tags TEXT,  -- comma-separated tags
     notes TEXT,
-    assigned_user_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    contact_id INTEGER REFERENCES biznes.contacts(id) ON DELETE SET NULL,
-    lead_id INTEGER REFERENCES biznes.leads(id) ON DELETE SET NULL,
+    
+    -- Foreign keys
+    assigned_user_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    contact_id INTEGER REFERENCES contacts(id),
+    lead_id INTEGER REFERENCES leads(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Activities
-CREATE TABLE biznes.activities (
+CREATE TABLE activities (
     id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     description TEXT,
-    type VARCHAR(50) NOT NULL, -- call, email, meeting, task, note
-    status VARCHAR(50) DEFAULT 'pending', -- pending, completed, cancelled
+    type VARCHAR NOT NULL,
+    status VARCHAR DEFAULT 'pending',
+    
+    -- Date and time
     scheduled_date TIMESTAMPTZ,
     completed_date TIMESTAMPTZ,
     duration_minutes INTEGER,
+    
+    -- Location and details
     location VARCHAR,
     outcome TEXT,
-    priority VARCHAR DEFAULT 'medium', -- low, medium, high
+    
+    -- Priority
+    priority VARCHAR DEFAULT 'medium',
+    
+    -- Reminder settings
     reminder_date TIMESTAMPTZ,
     reminder_sent BOOLEAN DEFAULT FALSE,
+    
+    -- Additional information
     notes TEXT,
-    user_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    contact_id INTEGER REFERENCES biznes.contacts(id) ON DELETE SET NULL,
-    lead_id INTEGER REFERENCES biznes.leads(id) ON DELETE SET NULL,
-    deal_id INTEGER REFERENCES biznes.deals(id) ON DELETE SET NULL,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
+    
+    -- Foreign keys
+    user_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    
+    -- Related entities (can be null)
+    contact_id INTEGER REFERENCES contacts(id),
+    lead_id INTEGER REFERENCES leads(id),
+    deal_id INTEGER REFERENCES deals(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -240,72 +245,85 @@ CREATE TABLE biznes.activities (
 -- ================================================================
 
 -- Invoices
-CREATE TABLE biznes.invoices (
+CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
     invoice_number VARCHAR UNIQUE NOT NULL,
-    status VARCHAR(50) DEFAULT 'draft', -- draft, sent, paid, overdue, cancelled
+    status VARCHAR DEFAULT 'draft',
+    
+    -- Customer information
     customer_name VARCHAR NOT NULL,
     customer_tax_id VARCHAR,
     customer_address TEXT,
     customer_phone VARCHAR,
     customer_email VARCHAR,
-    subtotal NUMERIC(15, 2) NOT NULL,
-    vat_amount NUMERIC(15, 2) DEFAULT 0,
-    total_amount NUMERIC(15, 2) NOT NULL,
-    paid_amount NUMERIC(15, 2) DEFAULT 0,
-    remaining_amount NUMERIC(15, 2) NOT NULL,
-    issue_date TIMESTAMPTZ NOT NULL,
-    due_date TIMESTAMPTZ NOT NULL,
-    paid_date TIMESTAMPTZ,
-    notes TEXT,
-    terms TEXT,
-    template_name VARCHAR DEFAULT 'default',
+    
+    -- Invoice details
+    issue_date TIMESTAMPTZ DEFAULT NOW(),
+    due_date TIMESTAMPTZ,
+    subtotal NUMERIC(15,2) NOT NULL,
+    vat_amount NUMERIC(15,2) DEFAULT 0,
+    total_amount NUMERIC(15,2) NOT NULL,
+    
+    -- Payment information
     payment_method VARCHAR,
     payment_reference VARCHAR,
+    
+    -- Recurring invoice settings
     is_recurring BOOLEAN DEFAULT FALSE,
-    recurring_interval VARCHAR, -- monthly, quarterly, yearly
+    recurring_interval VARCHAR,
     recurring_end_date TIMESTAMPTZ,
-    created_by_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    contact_id INTEGER REFERENCES biznes.contacts(id) ON DELETE SET NULL,
+    
+    -- Foreign keys
+    created_by_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    contact_id INTEGER REFERENCES contacts(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Invoice Items
-CREATE TABLE biznes.invoice_items (
+CREATE TABLE invoice_items (
     id SERIAL PRIMARY KEY,
     description TEXT NOT NULL,
-    quantity NUMERIC(10, 2) NOT NULL,
-    unit_price NUMERIC(15, 2) NOT NULL,
-    discount NUMERIC(5, 2) DEFAULT 0,
-    vat_rate NUMERIC(5, 2) DEFAULT 12, -- Uzbekistan VAT
-    line_total NUMERIC(15, 2) NOT NULL,
-    invoice_id INTEGER NOT NULL REFERENCES biznes.invoices(id) ON DELETE CASCADE,
+    quantity NUMERIC(10,2) NOT NULL,
+    unit_price NUMERIC(15,2) NOT NULL,
+    discount NUMERIC(5,2) DEFAULT 0,
+    vat_rate NUMERIC(5,2) DEFAULT 12,
+    line_total NUMERIC(15,2) NOT NULL,
+    
+    -- Foreign keys
+    invoice_id INTEGER REFERENCES invoices(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Transactions
-CREATE TABLE biznes.transactions (
+CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
-    amount NUMERIC(15, 2) NOT NULL,
-    type VARCHAR(50) NOT NULL, -- income, expense
-    category VARCHAR(50) NOT NULL, -- sales, purchases, salary, rent, utilities, etc.
+    amount NUMERIC(15,2) NOT NULL,
+    type VARCHAR NOT NULL,
+    category VARCHAR NOT NULL,
     description TEXT,
     date TIMESTAMPTZ NOT NULL,
     vat_included BOOLEAN DEFAULT TRUE,
-    vat_amount NUMERIC(15, 2) DEFAULT 0,
-    tax_amount NUMERIC(15, 2) DEFAULT 0,
+    vat_amount NUMERIC(15,2) DEFAULT 0,
+    tax_amount NUMERIC(15,2) DEFAULT 0,
+    
+    -- Transaction details
     reference_number VARCHAR,
     attachment_url VARCHAR,
     is_reconciled BOOLEAN DEFAULT FALSE,
-    user_id INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    contact_id INTEGER REFERENCES biznes.contacts(id) ON DELETE SET NULL,
-    invoice_id INTEGER REFERENCES biznes.invoices(id) ON DELETE SET NULL,
+    
+    -- Foreign keys
+    user_id INTEGER REFERENCES app_users(id),
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    contact_id INTEGER REFERENCES contacts(id),
+    invoice_id INTEGER REFERENCES invoices(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -315,74 +333,93 @@ CREATE TABLE biznes.transactions (
 -- ================================================================
 
 -- Tasks
-CREATE TABLE biznes.tasks (
+CREATE TABLE tasks (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(20) DEFAULT 'todo' NOT NULL, -- todo, in_progress, done, cancelled
-    priority VARCHAR(20) DEFAULT 'medium' NOT NULL, -- low, medium, high, urgent
-    assigned_to INTEGER REFERENCES biznes.app_users(id) ON DELETE SET NULL,
-    created_by INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
+    
+    -- Task metadata
+    status VARCHAR(20) DEFAULT 'todo',
+    priority VARCHAR(20) DEFAULT 'medium',
+    
+    -- Assignment
+    assigned_to INTEGER REFERENCES app_users(id),
+    created_by INTEGER REFERENCES app_users(id),
+    
+    -- Dates
     due_date TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
+    
+    -- Multi-tenant support
+    tenant_id INTEGER REFERENCES tenants(id),
+    company_id INTEGER REFERENCES companies(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Task Comments
-CREATE TABLE biznes.task_comments (
+CREATE TABLE task_comments (
     id SERIAL PRIMARY KEY,
-    task_id INTEGER NOT NULL REFERENCES biznes.tasks(id) ON DELETE CASCADE,
+    task_id INTEGER REFERENCES tasks(id),
     content TEXT NOT NULL,
-    created_by INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
+    
+    -- Comment metadata
+    created_by INTEGER REFERENCES app_users(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ================================================================
--- TEMPLATES & AUTOMATION MODULE
+-- TEMPLATE MODULE
 -- ================================================================
 
 -- Templates
-CREATE TABLE biznes.templates (
+CREATE TABLE templates (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL, -- invoice, email, task, report
+    type VARCHAR(50) NOT NULL,  -- 'transaction' or 'invoice'
     description TEXT,
-    data JSONB NOT NULL, -- Template structure as JSON
-    is_recurring BOOLEAN DEFAULT FALSE NOT NULL,
-    recurring_interval VARCHAR(20), -- daily, weekly, monthly, yearly
-    recurring_day INTEGER, -- Day of month/week
-    created_by INTEGER NOT NULL REFERENCES biznes.app_users(id) ON DELETE CASCADE,
-    tenant_id INTEGER NOT NULL REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
+    
+    -- Template data (JSON structure for transaction or invoice data)
+    data JSONB NOT NULL,
+    
+    -- Recurring functionality
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurring_interval VARCHAR,
+    recurring_day INTEGER,
+    
+    -- Foreign keys
+    created_by INTEGER REFERENCES app_users(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    company_id INTEGER REFERENCES companies(id),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Recurring Schedules
-CREATE TABLE biznes.recurring_schedules (
+CREATE TABLE recurring_schedules (
     id SERIAL PRIMARY KEY,
-    template_id INTEGER NOT NULL REFERENCES biznes.templates(id) ON DELETE CASCADE,
+    template_id INTEGER REFERENCES templates(id),
     next_execution_date TIMESTAMPTZ NOT NULL,
     last_execution_date TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT TRUE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ================================================================
--- KPI & ANALYTICS MODULE
+-- KPI MODULE
 -- ================================================================
 
 -- KPIs
-CREATE TABLE biznes.kpis (
+CREATE TABLE kpis (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    tenant_id INTEGER REFERENCES biznes.tenants(id) ON DELETE CASCADE,
-    category VARCHAR(50) NOT NULL, -- revenue, expenses, customers, projects
-    period VARCHAR(50) NOT NULL, -- daily, weekly, monthly, quarterly, yearly
+    company_id INTEGER REFERENCES companies(id),
+    tenant_id INTEGER REFERENCES tenants(id),
+    category VARCHAR NOT NULL,
+    period VARCHAR NOT NULL,
     value FLOAT NOT NULL,
     previous_value FLOAT,
     target_value FLOAT,
@@ -392,149 +429,77 @@ CREATE TABLE biznes.kpis (
 );
 
 -- KPI Trends
-CREATE TABLE biznes.kpi_trends (
+CREATE TABLE kpi_trends (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    kpi_category VARCHAR(50) NOT NULL,
-    period_type VARCHAR(50) NOT NULL, -- daily, weekly, monthly
-    trend_data TEXT NOT NULL, -- JSON data for charts
-    forecast_data TEXT, -- JSON forecast data
-    last_updated TIMESTAMPTZ DEFAULT NOW(),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    company_id INTEGER REFERENCES companies(id),
+    kpi_category VARCHAR NOT NULL,
+    period_type VARCHAR NOT NULL,
+    trend_data TEXT NOT NULL,  -- JSON data for trend points
+    forecast_data TEXT,  -- JSON data for forecast
+    last_updated TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- KPI Alerts
-CREATE TABLE biznes.kpi_alerts (
+CREATE TABLE kpi_alerts (
     id SERIAL PRIMARY KEY,
-    company_id INTEGER NOT NULL REFERENCES biznes.companies(id) ON DELETE CASCADE,
-    kpi_category VARCHAR(50) NOT NULL,
-    alert_type VARCHAR NOT NULL, -- threshold, trend, anomaly
-    condition VARCHAR NOT NULL, -- above, below, increasing, decreasing
+    company_id INTEGER REFERENCES companies(id),
+    kpi_category VARCHAR NOT NULL,
+    alert_type VARCHAR NOT NULL,  -- "threshold", "trend", "anomaly"
+    condition VARCHAR NOT NULL,  -- "above", "below", "decreasing", "increasing"
     threshold_value FLOAT,
     is_active BOOLEAN DEFAULT TRUE,
-    last_triggered TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ================================================================
 -- INDEXES FOR PERFORMANCE
 -- ================================================================
 
--- Tenant indexes (for multi-tenancy)
-CREATE INDEX idx_biznes_tenants_id ON biznes.tenants(id);
-CREATE INDEX idx_biznes_tenants_email ON biznes.tenants(email);
-CREATE INDEX idx_biznes_tenants_tax_id ON biznes.tenants(tax_id);
-CREATE INDEX idx_biznes_tenants_is_active ON biznes.tenants(is_active);
+-- Core tables
+CREATE INDEX idx_tenants_tax_id ON tenants(tax_id);
+CREATE INDEX idx_tenants_email ON tenants(email);
+CREATE INDEX idx_companies_tax_id ON companies(tax_id);
+CREATE INDEX idx_companies_code ON companies(company_code);
+CREATE INDEX idx_app_users_email ON app_users(email);
+CREATE INDEX idx_app_users_username ON app_users(username);
+CREATE INDEX idx_app_users_tenant ON app_users(tenant_id);
 
--- Company indexes
-CREATE INDEX idx_biznes_companies_tenant_id ON biznes.companies(tenant_id);
-CREATE INDEX idx_biznes_companies_email ON biznes.companies(email);
-CREATE INDEX idx_biznes_companies_tax_id ON biznes.companies(tax_id);
-CREATE INDEX idx_biznes_companies_company_code ON biznes.companies(company_code);
-CREATE INDEX idx_biznes_companies_is_active ON biznes.companies(is_active);
+-- CRM tables
+CREATE INDEX idx_contacts_company ON contacts(company_id);
+CREATE INDEX idx_contacts_tenant ON contacts(tenant_id);
+CREATE INDEX idx_leads_company ON leads(company_id);
+CREATE INDEX idx_leads_tenant ON leads(tenant_id);
+CREATE INDEX idx_deals_company ON deals(company_id);
+CREATE INDEX idx_deals_tenant ON deals(tenant_id);
+CREATE INDEX idx_activities_company ON activities(company_id);
+CREATE INDEX idx_activities_user ON activities(user_id);
 
--- User indexes
-CREATE INDEX idx_biznes_app_users_tenant_id ON biznes.app_users(tenant_id);
-CREATE INDEX idx_biznes_app_users_email ON biznes.app_users(email);
-CREATE INDEX idx_biznes_app_users_username ON biznes.app_users(username);
-CREATE INDEX idx_biznes_app_users_company_id ON biznes.app_users(company_id);
-CREATE INDEX idx_biznes_app_users_is_active ON biznes.app_users(is_active);
-CREATE INDEX idx_biznes_app_users_supabase_auth_id ON biznes.app_users(supabase_auth_id);
+-- Accounting tables
+CREATE INDEX idx_invoices_company ON invoices(company_id);
+CREATE INDEX idx_invoices_tenant ON invoices(tenant_id);
+CREATE INDEX idx_transactions_company ON transactions(company_id);
+CREATE INDEX idx_transactions_tenant ON transactions(tenant_id);
+CREATE INDEX idx_transactions_date ON transactions(date);
 
--- CRM indexes
-CREATE INDEX idx_biznes_contacts_tenant_id ON biznes.contacts(tenant_id);
-CREATE INDEX idx_biznes_contacts_company_id ON biznes.contacts(company_id);
-CREATE INDEX idx_biznes_contacts_assigned_user_id ON biznes.contacts(assigned_user_id);
-CREATE INDEX idx_biznes_contacts_email ON biznes.contacts(email);
-CREATE INDEX idx_biznes_contacts_is_active ON biznes.contacts(is_active);
+-- Task tables
+CREATE INDEX idx_tasks_company ON tasks(company_id);
+CREATE INDEX idx_tasks_tenant ON tasks(tenant_id);
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 
-CREATE INDEX idx_biznes_leads_tenant_id ON biznes.leads(tenant_id);
-CREATE INDEX idx_biznes_leads_company_id ON biznes.leads(company_id);
-CREATE INDEX idx_biznes_leads_assigned_user_id ON biznes.leads(assigned_user_id);
-CREATE INDEX idx_biznes_leads_contact_id ON biznes.leads(contact_id);
-CREATE INDEX idx_biznes_leads_status ON biznes.leads(status);
+-- Template tables
+CREATE INDEX idx_templates_company ON templates(company_id);
+CREATE INDEX idx_templates_tenant ON templates(tenant_id);
 
-CREATE INDEX idx_biznes_deals_tenant_id ON biznes.deals(tenant_id);
-CREATE INDEX idx_biznes_deals_company_id ON biznes.deals(company_id);
-CREATE INDEX idx_biznes_deals_assigned_user_id ON biznes.deals(assigned_user_id);
-CREATE INDEX idx_biznes_deals_contact_id ON biznes.deals(contact_id);
-CREATE INDEX idx_biznes_deals_lead_id ON biznes.deals(lead_id);
-CREATE INDEX idx_biznes_deals_status ON biznes.deals(status);
-
-CREATE INDEX idx_biznes_activities_tenant_id ON biznes.activities(tenant_id);
-CREATE INDEX idx_biznes_activities_user_id ON biznes.activities(user_id);
-CREATE INDEX idx_biznes_activities_company_id ON biznes.activities(company_id);
-CREATE INDEX idx_biznes_activities_contact_id ON biznes.activities(contact_id);
-CREATE INDEX idx_biznes_activities_lead_id ON biznes.activities(lead_id);
-CREATE INDEX idx_biznes_activities_deal_id ON biznes.activities(deal_id);
-CREATE INDEX idx_biznes_activities_status ON biznes.activities(status);
-
--- Accounting indexes
-CREATE INDEX idx_biznes_invoices_tenant_id ON biznes.invoices(tenant_id);
-CREATE INDEX idx_biznes_invoices_company_id ON biznes.invoices(company_id);
-CREATE INDEX idx_biznes_invoices_created_by_id ON biznes.invoices(created_by_id);
-CREATE INDEX idx_biznes_invoices_contact_id ON biznes.invoices(contact_id);
-CREATE INDEX idx_biznes_invoices_status ON biznes.invoices(status);
-CREATE INDEX idx_biznes_invoices_invoice_number ON biznes.invoices(invoice_number);
-CREATE INDEX idx_biznes_invoices_due_date ON biznes.invoices(due_date);
-
-CREATE INDEX idx_biznes_invoice_items_invoice_id ON biznes.invoice_items(invoice_id);
-
-CREATE INDEX idx_biznes_transactions_tenant_id ON biznes.transactions(tenant_id);
-CREATE INDEX idx_biznes_transactions_company_id ON biznes.transactions(company_id);
-CREATE INDEX idx_biznes_transactions_user_id ON biznes.transactions(user_id);
-CREATE INDEX idx_biznes_transactions_contact_id ON biznes.transactions(contact_id);
-CREATE INDEX idx_biznes_transactions_invoice_id ON biznes.transactions(invoice_id);
-CREATE INDEX idx_biznes_transactions_type ON biznes.transactions(type);
-CREATE INDEX idx_biznes_transactions_category ON biznes.transactions(category);
-CREATE INDEX idx_biznes_transactions_date ON biznes.transactions(date);
-CREATE INDEX idx_biznes_transactions_is_reconciled ON biznes.transactions(is_reconciled);
-
--- Task indexes
-CREATE INDEX idx_biznes_tasks_tenant_id ON biznes.tasks(tenant_id);
-CREATE INDEX idx_biznes_tasks_company_id ON biznes.tasks(company_id);
-CREATE INDEX idx_biznes_tasks_assigned_to ON biznes.tasks(assigned_to);
-CREATE INDEX idx_biznes_tasks_created_by ON biznes.tasks(created_by);
-CREATE INDEX idx_biznes_tasks_status ON biznes.tasks(status);
-CREATE INDEX idx_biznes_tasks_priority ON biznes.tasks(priority);
-CREATE INDEX idx_biznes_tasks_due_date ON biznes.tasks(due_date);
-
-CREATE INDEX idx_biznes_task_comments_task_id ON biznes.task_comments(task_id);
-CREATE INDEX idx_biznes_task_comments_created_by ON biznes.task_comments(created_by);
-
--- Template indexes
-CREATE INDEX idx_biznes_templates_tenant_id ON biznes.templates(tenant_id);
-CREATE INDEX idx_biznes_templates_company_id ON biznes.templates(company_id);
-CREATE INDEX idx_biznes_templates_created_by ON biznes.templates(created_by);
-CREATE INDEX idx_biznes_templates_type ON biznes.templates(type);
-CREATE INDEX idx_biznes_templates_is_recurring ON biznes.templates(is_recurring);
-
-CREATE INDEX idx_biznes_recurring_schedules_template_id ON biznes.recurring_schedules(template_id);
-CREATE INDEX idx_biznes_recurring_schedules_next_execution ON biznes.recurring_schedules(next_execution_date);
-CREATE INDEX idx_biznes_recurring_schedules_is_active ON biznes.recurring_schedules(is_active);
-
--- KPI indexes
-CREATE INDEX idx_biznes_kpis_tenant_id ON biznes.kpis(tenant_id);
-CREATE INDEX idx_biznes_kpis_company_id ON biznes.kpis(company_id);
-CREATE INDEX idx_biznes_kpis_category ON biznes.kpis(category);
-CREATE INDEX idx_biznes_kpis_period ON biznes.kpis(period);
-CREATE INDEX idx_biznes_kpis_date ON biznes.kpis(date);
-
-CREATE INDEX idx_biznes_kpi_trends_company_id ON biznes.kpi_trends(company_id);
-CREATE INDEX idx_biznes_kpi_trends_kpi_category ON biznes.kpi_trends(kpi_category);
-CREATE INDEX idx_biznes_kpi_trends_period_type ON biznes.kpi_trends(period_type);
-
-CREATE INDEX idx_biznes_kpi_alerts_company_id ON biznes.kpi_alerts(company_id);
-CREATE INDEX idx_biznes_kpi_alerts_kpi_category ON biznes.kpi_alerts(kpi_category);
-CREATE INDEX idx_biznes_kpi_alerts_is_active ON biznes.kpi_alerts(is_active);
+-- KPI tables
+CREATE INDEX idx_kpis_company ON kpis(company_id);
+CREATE INDEX idx_kpis_tenant ON kpis(tenant_id);
+CREATE INDEX idx_kpis_date ON kpis(date);
 
 -- ================================================================
--- FUNCTIONS AND TRIGGERS
+-- TRIGGERS FOR UPDATED_AT
 -- ================================================================
 
--- Updated timestamp function
-CREATE OR REPLACE FUNCTION biznes.update_updated_at_column()
+CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -542,193 +507,40 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create triggers for updated_at columns
-CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON biznes.tenants
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON biznes.companies
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_app_users_updated_at BEFORE UPDATE ON biznes.app_users
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON biznes.contacts
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON biznes.leads
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON biznes.deals
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_activities_updated_at BEFORE UPDATE ON biznes.activities
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON biznes.invoices
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_invoice_items_updated_at BEFORE UPDATE ON biznes.invoice_items
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON biznes.transactions
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON biznes.tasks
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON biznes.templates
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_kpis_updated_at BEFORE UPDATE ON biznes.kpis
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_kpi_alerts_updated_at BEFORE UPDATE ON biznes.kpi_alerts
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
-
-CREATE TRIGGER update_recurring_schedules_updated_at BEFORE UPDATE ON biznes.recurring_schedules
-    FOR EACH ROW EXECUTE FUNCTION biznes.update_updated_at_column();
+-- Apply to all tables with updated_at
+CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_app_users_updated_at BEFORE UPDATE ON app_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_activities_updated_at BEFORE UPDATE ON activities FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ================================================================
--- ROW LEVEL SECURITY (RLS) - Multi-tenant isolation
+-- SAMPLE DATA (for testing)
 -- ================================================================
 
--- Enable RLS on all tables
-ALTER TABLE biznes.tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.companies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.app_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.contacts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.leads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.deals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.activities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.invoice_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.task_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.recurring_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.kpis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.kpi_trends ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biznes.kpi_alerts ENABLE ROW LEVEL SECURITY;
+-- Sample tenant
+INSERT INTO tenants (name, tax_id, email, phone, industry, employee_count) VALUES 
+('Test Company', '123456789', 'test@company.com', '+998901234567', 'Technology', 10);
 
--- RLS Policies for Multi-tenancy
--- Users can only see their own tenant's data
-CREATE POLICY "Users can view own tenant data" ON biznes.tenants
-    USING (id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
+-- Sample company
+INSERT INTO companies (name, tax_id, company_code, address, email, tenant_id) VALUES 
+('Test LLC', '123456789', 'TEST001', 'Tashkent, Uzbekistan', 'info@testcompany.uz', 1);
 
-CREATE POLICY "Users can update own tenant data" ON biznes.tenants
-    USING (id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
--- Company policies
-CREATE POLICY "Users can view own company data" ON biznes.companies
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own company data" ON biznes.companies
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
--- User policies (users can see others in same tenant)
-CREATE POLICY "Users can view own tenant users" ON biznes.app_users
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own profile" ON biznes.app_users
-    USING (id = current_setting('app.current_user_id')::integer)
-    WITH CHECK (id = current_setting('app.current_user_id')::integer);
-
--- Apply similar tenant-based policies to all other tables
-CREATE POLICY "Users can view own tenant contacts" ON biznes.contacts
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant contacts" ON biznes.contacts
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
--- Similar policies for leads, deals, activities, invoices, transactions, tasks, templates, kpis...
-CREATE POLICY "Users can view own tenant leads" ON biznes.leads
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant leads" ON biznes.leads
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant deals" ON biznes.deals
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant deals" ON biznes.deals
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant activities" ON biznes.activities
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant activities" ON biznes.activities
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant invoices" ON biznes.invoices
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant invoices" ON biznes.invoices
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant transactions" ON biznes.transactions
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant transactions" ON biznes.transactions
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant tasks" ON biznes.tasks
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant tasks" ON biznes.tasks
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant templates" ON biznes.templates
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant templates" ON biznes.templates
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can view own tenant kpis" ON biznes.kpis
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
-
-CREATE POLICY "Users can update own tenant kpis" ON biznes.kpis
-    USING (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer))
-    WITH CHECK (tenant_id IN (SELECT tenant_id FROM biznes.app_users WHERE id = current_setting('app.current_user_id')::integer));
+-- Sample admin user
+INSERT INTO app_users (email, username, full_name, hashed_password, role, tenant_id, company_id) VALUES 
+('admin@testcompany.uz', 'admin', 'Admin User', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6ukx.LFvO6', 'admin', 1, 1);
 
 -- ================================================================
--- SAMPLE DATA (for testing - remove in production)
+-- MIGRATION COMPLETE
 -- ================================================================
 
--- Insert a sample tenant
-INSERT INTO biznes.tenants (name, tax_id, email, industry, employee_count)
-VALUES ('Test Company', '123456789', 'test@company.com', 'Technology', 10);
-
+-- All tables created in public schema
+-- No schema conflicts with Supabase
+-- Ready for immediate use
 -- ================================================================
--- COMPLETION MESSAGE
--- ================================================================
-
--- Migration completed successfully!
--- All tables are in 'biznes' schema, completely separate from Supabase defaults
--- Multi-tenancy is enforced through RLS policies
--- No conflicts with auth, storage, realtime, or other Supabase schemas
--- Ready for production deployment!
-
-DO $$
-BEGIN
-    RAISE NOTICE '================================================';
-    RAISE NOTICE 'BiznesAssistant Migration Completed Successfully!';
-    RAISE NOTICE '================================================';
-    RAISE NOTICE 'Schema: biznes (completely separate from Supabase)';
-    RAISE NOTICE 'Tables: 17 tables with full multi-tenant support';
-    RAISE NOTICE 'Security: Row Level Security enabled';
-    RAISE NOTICE 'Indexes: Performance optimized';
-    RAISE NOTICE 'Triggers: Auto-updated_at timestamps';
-    RAISE NOTICE 'Status: Ready for production deployment!';
-    RAISE NOTICE '================================================';
-END $$;

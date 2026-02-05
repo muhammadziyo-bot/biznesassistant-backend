@@ -4,11 +4,8 @@ from app.config import settings
 from app.models.base import Base
 
 # Create database engine
-# Create engine with search path for biznes schema
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"options": "-csearch_path=biznes,public"}
-)
+# Create database engine
+engine = create_engine(settings.DATABASE_URL)
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
