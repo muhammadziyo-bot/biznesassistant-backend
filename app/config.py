@@ -3,7 +3,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:rakhmonowvv@aws-0-sg.pooler.supabase.com:5432/postgres?sslmode=require"
+    DATABASE_URL: str = "postgresql://postgres.nyrecupifsholueqxopw:rakhmonowvv@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"

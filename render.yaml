@@ -23,7 +23,7 @@ services:
   # Environment variables (set these in Render dashboard)
   envVars:
     - key: DATABASE_URL
-      value: postgresql://postgres:rakhmonowvv@aws-0-sg.pooler.supabase.com:5432/postgres?sslmode=require
+      value: postgresql://postgres.nyrecupifsholueqxopw:rakhmonowvv@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
     - key: SECRET_KEY
       value: KctdGJjaKFvOM1G1O5RK4-HL3jzgqUvwLA0Mg4W8suQ
     - key: ALGORITHM
