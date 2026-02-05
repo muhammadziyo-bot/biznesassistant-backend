@@ -64,6 +64,7 @@ CREATE TABLE companies (
     email VARCHAR,
     bank_name VARCHAR,
     bank_account VARCHAR,
+    mfo VARCHAR,
     description TEXT,
     logo_url VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
