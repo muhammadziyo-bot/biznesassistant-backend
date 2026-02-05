@@ -9,6 +9,79 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Create your application schema (separate from auth)
 CREATE SCHEMA IF NOT EXISTS app;
 
+-- Check if tables exist in public schema and move them to app schema if needed
+DO $$
+BEGIN
+    -- Move tables from public to app schema if they exist there
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_users') THEN
+        ALTER TABLE public.app_users SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenants') THEN
+        ALTER TABLE public.tenants SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'companies') THEN
+        ALTER TABLE public.companies SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+        ALTER TABLE public.contacts SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leads') THEN
+        ALTER TABLE public.leads SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deals') THEN
+        ALTER TABLE public.deals SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'activities') THEN
+        ALTER TABLE public.activities SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'invoices') THEN
+        ALTER TABLE public.invoices SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'invoice_items') THEN
+        ALTER TABLE public.invoice_items SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'transactions') THEN
+        ALTER TABLE public.transactions SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+        ALTER TABLE public.tasks SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'task_comments') THEN
+        ALTER TABLE public.task_comments SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'templates') THEN
+        ALTER TABLE public.templates SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'recurring_schedules') THEN
+        ALTER TABLE public.recurring_schedules SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'kpis') THEN
+        ALTER TABLE public.kpis SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'kpi_trends') THEN
+        ALTER TABLE public.kpi_trends SET SCHEMA app;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'kpi_alerts') THEN
+        ALTER TABLE public.kpi_alerts SET SCHEMA app;
+    END IF;
+END $$;
+
 -- Drop ONLY our application tables (NEVER touch auth schema)
 DROP TABLE IF EXISTS app.task_comments CASCADE;
 DROP TABLE IF EXISTS app.recurring_schedules CASCADE;
@@ -24,7 +97,7 @@ DROP TABLE IF EXISTS app.templates CASCADE;
 DROP TABLE IF EXISTS app.kpi_alerts CASCADE;
 DROP TABLE IF EXISTS app.kpi_trends CASCADE;
 DROP TABLE IF EXISTS app.kpis CASCADE;
-DROP TABLE IF EXISTS app.users CASCADE;
+DROP TABLE IF EXISTS app.app_users CASCADE;
 DROP TABLE IF EXISTS app.companies CASCADE;
 DROP TABLE IF EXISTS app.tenants CASCADE;
 
@@ -464,25 +537,86 @@ CREATE INDEX idx_app_kpi_alerts_kpi_category ON app.kpi_alerts(kpi_category);
 CREATE INDEX idx_app_kpi_alerts_created_at ON app.kpi_alerts(created_at);
 
 -- Set up Row Level Security (RLS) for our app schema only
-ALTER TABLE app.tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.companies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.app_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.contacts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.leads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.deals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.activities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.invoice_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.task_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.recurring_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.kpis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.kpi_trends ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.kpi_alerts ENABLE ROW LEVEL SECURITY;
+-- Only enable if not already enabled to avoid conflicts
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'tenants' AND rowsecurity = true) THEN
+        ALTER TABLE app.tenants ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'companies' AND rowsecurity = true) THEN
+        ALTER TABLE app.companies ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'app_users' AND rowsecurity = true) THEN
+        ALTER TABLE app.app_users ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'contacts' AND rowsecurity = true) THEN
+        ALTER TABLE app.contacts ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'leads' AND rowsecurity = true) THEN
+        ALTER TABLE app.leads ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'deals' AND rowsecurity = true) THEN
+        ALTER TABLE app.deals ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'activities' AND rowsecurity = true) THEN
+        ALTER TABLE app.activities ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'invoices' AND rowsecurity = true) THEN
+        ALTER TABLE app.invoices ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'invoice_items' AND rowsecurity = true) THEN
+        ALTER TABLE app.invoice_items ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'transactions' AND rowsecurity = true) THEN
+        ALTER TABLE app.transactions ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'tasks' AND rowsecurity = true) THEN
+        ALTER TABLE app.tasks ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'task_comments' AND rowsecurity = true) THEN
+        ALTER TABLE app.task_comments ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'templates' AND rowsecurity = true) THEN
+        ALTER TABLE app.templates ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'recurring_schedules' AND rowsecurity = true) THEN
+        ALTER TABLE app.recurring_schedules ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'kpis' AND rowsecurity = true) THEN
+        ALTER TABLE app.kpis ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'kpi_trends' AND rowsecurity = true) THEN
+        ALTER TABLE app.kpi_trends ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'app' AND tablename = 'kpi_alerts' AND rowsecurity = true) THEN
+        ALTER TABLE app.kpi_alerts ENABLE ROW LEVEL SECURITY;
+    END IF;
+END $$;
 
 -- Create RLS policies that work WITH Supabase Auth
+-- Drop existing policies first to avoid conflicts
+DROP POLICY IF EXISTS "Users can view own app_users" ON app.app_users;
+DROP POLICY IF EXISTS "Users can update own app_users" ON app.app_users;
+DROP POLICY IF EXISTS "Users can view tenant data" ON app.tenants;
+DROP POLICY IF EXISTS "Users can view company data" ON app.companies;
+
+-- Create new policies
 CREATE POLICY "Users can view own app_users" ON app.app_users
     USING (auth_id = auth.uid());
 
@@ -506,6 +640,22 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at columns
+-- Drop existing triggers first to avoid conflicts
+DROP TRIGGER IF EXISTS update_tenants_updated_at ON app.tenants;
+DROP TRIGGER IF EXISTS update_companies_updated_at ON app.companies;
+DROP TRIGGER IF EXISTS update_app_users_updated_at ON app.app_users;
+DROP TRIGGER IF EXISTS update_contacts_updated_at ON app.contacts;
+DROP TRIGGER IF EXISTS update_leads_updated_at ON app.leads;
+DROP TRIGGER IF EXISTS update_deals_updated_at ON app.deals;
+DROP TRIGGER IF EXISTS update_activities_updated_at ON app.activities;
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON app.invoices;
+DROP TRIGGER IF EXISTS update_invoice_items_updated_at ON app.invoice_items;
+DROP TRIGGER IF EXISTS update_transactions_updated_at ON app.transactions;
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON app.tasks;
+DROP TRIGGER IF EXISTS update_templates_updated_at ON app.templates;
+DROP TRIGGER IF EXISTS update_kpis_updated_at ON app.kpis;
+
+-- Create new triggers
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON app.tenants
     FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
@@ -546,15 +696,21 @@ CREATE TRIGGER update_kpis_updated_at BEFORE UPDATE ON app.kpis
     FOR EACH ROW EXECUTE FUNCTION app.update_updated_at_column();
 
 -- Create trigger to automatically create app_user when auth.user is created
+-- Only create if it doesn't already exist to avoid conflicts
 CREATE OR REPLACE FUNCTION app.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO app.app_users (auth_id, email, full_name, created_at)
-    VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), NOW());
+    -- Only insert if app_user doesn't already exist for this auth_id
+    IF NOT EXISTS (SELECT 1 FROM app.app_users WHERE auth_id = NEW.id) THEN
+        INSERT INTO app.app_users (auth_id, email, full_name, created_at)
+        VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), NOW());
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Only create trigger if it doesn't exist
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION app.handle_new_user();
