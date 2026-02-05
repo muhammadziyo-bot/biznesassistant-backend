@@ -12,7 +12,7 @@ class UserRole(enum.Enum):
 
 class User(Base):
     """Application user - completely independent from Supabase auth"""
-    __tablename__ = "biznes.app_users"
+    __tablename__ = "app_users"
     
     id = Column(Integer, primary_key=True, index=True)
     supabase_auth_id = Column(UUID, nullable=True)  # Optional link to Supabase auth
@@ -30,8 +30,8 @@ class User(Base):
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=True)
-    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)  # Multi-tenant support
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)  # Multi-tenant support
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

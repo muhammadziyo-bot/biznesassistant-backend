@@ -20,7 +20,7 @@ class RecurringInterval(enum.Enum):
     YEARLY = "yearly"
 
 class Template(Base):
-    __tablename__ = "biznes.templates"
+    __tablename__ = "templates"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
@@ -36,9 +36,9 @@ class Template(Base):
     recurring_day = Column(Integer, nullable=True)  # Day of month/week for recurring
     
     # Relationships
-    created_by = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey("app_users.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -55,10 +55,10 @@ class Template(Base):
 
 class RecurringSchedule(Base):
     """Track when recurring templates should be executed"""
-    __tablename__ = "biznes.recurring_schedules"
+    __tablename__ = "recurring_schedules"
     
     id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("biznes.templates.id"), nullable=False)
+    template_id = Column(Integer, ForeignKey("templates.id"), nullable=False)
     next_execution_date = Column(DateTime(timezone=True), nullable=False)
     last_execution_date = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)

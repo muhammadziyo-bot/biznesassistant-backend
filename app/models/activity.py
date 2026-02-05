@@ -20,7 +20,7 @@ class ActivityStatus(enum.Enum):
     CANCELLED = "cancelled"
 
 class Activity(Base):
-    __tablename__ = "biznes.activities"
+    __tablename__ = "activities"
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
@@ -48,13 +48,13 @@ class Activity(Base):
     notes = Column(Text, nullable=True)
     
     # Foreign keys (polymorphic relationships)
-    user_id = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("app_users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     
     # Related entities (can be null)
-    contact_id = Column(Integer, ForeignKey("biznes.contacts.id"), nullable=True)
-    lead_id = Column(Integer, ForeignKey("biznes.leads.id"), nullable=True)
-    deal_id = Column(Integer, ForeignKey("biznes.deals.id"), nullable=True)
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=True)
+    deal_id = Column(Integer, ForeignKey("deals.id"), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

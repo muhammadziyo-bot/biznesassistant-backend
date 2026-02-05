@@ -5,7 +5,7 @@ from app.models.base import Base
 
 class Tenant(Base):
     """Multi-tenant model for business isolation"""
-    __tablename__ = "biznes.tenants"
+    __tablename__ = "tenants"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)

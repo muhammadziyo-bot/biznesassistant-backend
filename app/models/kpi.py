@@ -21,11 +21,11 @@ class KPIPeriod(enum.Enum):
     YEARLY = "yearly"
 
 class KPI(Base):
-    __tablename__ = "biznes.kpis"
+    __tablename__ = "kpis"
     
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=True)  # Multi-tenant support
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)  # Multi-tenant support
     category = Column(Enum(KPICategory), nullable=False)
     period = Column(Enum(KPIPeriod), nullable=False)
     value = Column(Float, nullable=False)
@@ -40,10 +40,10 @@ class KPI(Base):
     tenant = relationship("Tenant", back_populates="kpis")
 
 class KPITrend(Base):
-    __tablename__ = "biznes.kpi_trends"
+    __tablename__ = "kpi_trends"
     
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     kpi_category = Column(Enum(KPICategory), nullable=False)
     period_type = Column(Enum(KPIPeriod), nullable=False)
     trend_data = Column(Text, nullable=False)  # JSON data for trend points
@@ -54,10 +54,10 @@ class KPITrend(Base):
     company = relationship("Company", back_populates="kpi_trends")
 
 class KPIAlert(Base):
-    __tablename__ = "biznes.kpi_alerts"
+    __tablename__ = "kpi_alerts"
     
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     kpi_category = Column(Enum(KPICategory), nullable=False)
     alert_type = Column(String, nullable=False)  # "threshold", "trend", "anomaly"
     condition = Column(String, nullable=False)  # "above", "below", "decreasing", "increasing"

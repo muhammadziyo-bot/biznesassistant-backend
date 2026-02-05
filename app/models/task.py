@@ -23,7 +23,7 @@ class TaskPriority(enum.Enum):
     URGENT = "urgent"
 
 class Task(Base):
-    __tablename__ = "biznes.tasks"
+    __tablename__ = "tasks"
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False, index=True)
@@ -34,16 +34,16 @@ class Task(Base):
     priority = Column(String(20), default=TaskPriority.MEDIUM.value, nullable=False)
     
     # Assignment
-    assigned_to = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=True)
-    created_by = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
+    assigned_to = Column(Integer, ForeignKey("app_users.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("app_users.id"), nullable=False)
     
     # Dates
     due_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     
     # Multi-tenant support
-    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -61,14 +61,14 @@ class Task(Base):
 
 class TaskComment(Base):
     """Comments and updates on tasks"""
-    __tablename__ = "biznes.task_comments"
+    __tablename__ = "task_comments"
     
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("biznes.tasks.id"), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
     content = Column(Text, nullable=False)
     
     # Comment metadata
-    created_by = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey("app_users.id"), nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -12,7 +12,7 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = "cancelled"
 
 class Invoice(Base):
-    __tablename__ = "biznes.invoices"
+    __tablename__ = "invoices"
     
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String, unique=True, nullable=False, index=True)
@@ -52,10 +52,10 @@ class Invoice(Base):
     recurring_end_date = Column(DateTime(timezone=True), nullable=True)
     
     # Foreign keys
-    created_by_id = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)  # Multi-tenant support
-    contact_id = Column(Integer, ForeignKey("biznes.contacts.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("app_users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)  # Multi-tenant support
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -70,7 +70,7 @@ class Invoice(Base):
     transactions = relationship("Transaction", back_populates="invoice")
 
 class InvoiceItem(Base):
-    __tablename__ = "biznes.invoice_items"
+    __tablename__ = "invoice_items"
     
     id = Column(Integer, primary_key=True, index=True)
     description = Column(Text, nullable=False)
@@ -81,7 +81,7 @@ class InvoiceItem(Base):
     line_total = Column(Numeric(15, 2), nullable=False)
     
     # Foreign keys
-    invoice_id = Column(Integer, ForeignKey("biznes.invoices.id"), nullable=False)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
