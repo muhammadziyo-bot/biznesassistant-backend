@@ -20,17 +20,6 @@ services:
   # Auto-deploy
   autoDeploy: true
   
-  # Environment variables (set these in Render dashboard)
-  envVars:
-    - key: DATABASE_URL
-      value: postgresql://postgres.nyrecupifsholueqxopw:rakhmonowvv@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
-    - key: SECRET_KEY
-      value: KctdGJjaKFvOM1G1O5RK4-HL3jzgqUvwLA0Mg4W8suQ
-    - key: ALGORITHM
-      value: HS256
-    - key: ACCESS_TOKEN_EXPIRE_MINUTES
-      value: "30"
-  
   # Instance configuration
   instanceType: free
   
