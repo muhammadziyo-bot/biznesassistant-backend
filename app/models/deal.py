@@ -19,7 +19,7 @@ class DealPriority(enum.Enum):
     URGENT = "urgent"
 
 class Deal(Base):
-    __tablename__ = "app.deals"
+    __tablename__ = "biznes.deals"
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
@@ -54,11 +54,11 @@ class Deal(Base):
     notes = Column(Text, nullable=True)
     
     # Foreign keys
-    assigned_user_id = Column(Integer, ForeignKey("app.app_users.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("app.companies.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("app.tenants.id"), nullable=True)  # Multi-tenant support
-    contact_id = Column(Integer, ForeignKey("app.contacts.id"), nullable=True)
-    lead_id = Column(Integer, ForeignKey("app.leads.id"), nullable=True)
+    assigned_user_id = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)  # Multi-tenant support
+    contact_id = Column(Integer, ForeignKey("biznes.contacts.id"), nullable=True)
+    lead_id = Column(Integer, ForeignKey("biznes.leads.id"), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

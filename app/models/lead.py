@@ -21,7 +21,7 @@ class LeadSource(enum.Enum):
     OTHER = "other"
 
 class Lead(Base):
-    __tablename__ = "app.leads"
+    __tablename__ = "biznes.leads"
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
@@ -53,10 +53,10 @@ class Lead(Base):
     converted_date = Column(DateTime(timezone=True), nullable=True)
     
     # Foreign keys
-    assigned_user_id = Column(Integer, ForeignKey("app.app_users.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("app.companies.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("app.tenants.id"), nullable=True)  # Multi-tenant support
-    contact_id = Column(Integer, ForeignKey("app.contacts.id"), nullable=True)
+    assigned_user_id = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)  # Multi-tenant support
+    contact_id = Column(Integer, ForeignKey("biznes.contacts.id"), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

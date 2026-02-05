@@ -43,7 +43,7 @@ class TransactionCategory(enum.Enum):
         return super()._missing_(value)
 
 class Transaction(Base):
-    __tablename__ = "app.transactions"
+    __tablename__ = "biznes.transactions"
     
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Numeric(15, 2), nullable=False)
@@ -59,11 +59,11 @@ class Transaction(Base):
     is_reconciled = Column(Boolean, default=False)
     
     # Foreign keys
-    user_id = Column(Integer, ForeignKey("app.app_users.id"), nullable=False)
-    company_id = Column(Integer, ForeignKey("app.companies.id"), nullable=False)
-    tenant_id = Column(Integer, ForeignKey("app.tenants.id"), nullable=True)  # Multi-tenant support
-    contact_id = Column(Integer, ForeignKey("app.contacts.id"), nullable=True)
-    invoice_id = Column(Integer, ForeignKey("app.invoices.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("biznes.app_users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("biznes.companies.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("biznes.tenants.id"), nullable=False)  # Multi-tenant support
+    contact_id = Column(Integer, ForeignKey("biznes.contacts.id"), nullable=True)
+    invoice_id = Column(Integer, ForeignKey("biznes.invoices.id"), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
