@@ -577,24 +577,112 @@ CREATE TRIGGER update_kpi_alerts_updated_at BEFORE UPDATE ON kpi_alerts FOR EACH
 -- DATA RESTORATION - RESTORE EXISTING DATA
 -- ================================================================
 
--- Restore data from backup tables (only if backup tables have data)
-INSERT INTO app_users SELECT * FROM backup_app_users WHERE NOT EXISTS (SELECT 1 FROM app_users LIMIT 1);
-INSERT INTO tenants SELECT * FROM backup_tenants WHERE NOT EXISTS (SELECT 1 FROM tenants LIMIT 1);
-INSERT INTO companies SELECT * FROM backup_companies WHERE NOT EXISTS (SELECT 1 FROM companies LIMIT 1);
-INSERT INTO contacts SELECT * FROM backup_contacts WHERE NOT EXISTS (SELECT 1 FROM contacts LIMIT 1);
-INSERT INTO leads SELECT * FROM backup_leads WHERE NOT EXISTS (SELECT 1 FROM leads LIMIT 1);
-INSERT INTO deals SELECT * FROM backup_deals WHERE NOT EXISTS (SELECT 1 FROM deals LIMIT 1);
-INSERT INTO activities SELECT * FROM backup_activities WHERE NOT EXISTS (SELECT 1 FROM activities LIMIT 1);
-INSERT INTO transactions SELECT * FROM backup_transactions WHERE NOT EXISTS (SELECT 1 FROM transactions LIMIT 1);
-INSERT INTO invoices SELECT * FROM backup_invoices WHERE NOT EXISTS (SELECT 1 FROM invoices LIMIT 1);
-INSERT INTO invoice_items SELECT * FROM backup_invoice_items WHERE NOT EXISTS (SELECT 1 FROM invoice_items LIMIT 1);
-INSERT INTO tasks SELECT * FROM backup_tasks WHERE NOT EXISTS (SELECT 1 FROM tasks LIMIT 1);
-INSERT INTO task_comments SELECT * FROM backup_task_comments WHERE NOT EXISTS (SELECT 1 FROM task_comments LIMIT 1);
-INSERT INTO templates SELECT * FROM backup_templates WHERE NOT EXISTS (SELECT 1 FROM templates LIMIT 1);
-INSERT INTO recurring_schedules SELECT * FROM backup_recurring_schedules WHERE NOT EXISTS (SELECT 1 FROM recurring_schedules LIMIT 1);
-INSERT INTO kpis SELECT * FROM backup_kpis WHERE NOT EXISTS (SELECT 1 FROM kpis LIMIT 1);
-INSERT INTO kpi_trends SELECT * FROM backup_kpi_trends WHERE NOT EXISTS (SELECT 1 FROM kpi_trends LIMIT 1);
-INSERT INTO kpi_alerts SELECT * FROM backup_kpi_alerts WHERE NOT EXISTS (SELECT 1 FROM kpi_alerts LIMIT 1);
+-- Restore data from backup tables (only if backup tables have data and foreign keys are valid)
+INSERT INTO app_users (id, supabase_auth_id, email, username, full_name, hashed_password, phone, role, is_active, is_verified, language, email_verification_token, email_verification_expires, password_reset_token, password_reset_expires, last_login, company_id, tenant_id, created_at, updated_at)
+SELECT * FROM backup_app_users bu 
+WHERE NOT EXISTS (SELECT 1 FROM app_users LIMIT 1)
+AND (bu.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bu.company_id));
+
+INSERT INTO tenants (id, name, tax_id, email, phone, industry, employee_count, subscription_tier, subscription_status, trial_ends_at, subscription_ends_at, is_active, is_verified, created_at, updated_at)
+SELECT * FROM backup_tenants bt 
+WHERE NOT EXISTS (SELECT 1 FROM tenants LIMIT 1);
+
+INSERT INTO companies (id, name, tax_id, company_code, address, phone, email, bank_name, bank_account, mfo, description, logo_url, is_active, tenant_id, created_at, updated_at)
+SELECT * FROM backup_companies bc 
+WHERE NOT EXISTS (SELECT 1 FROM companies LIMIT 1)
+AND (bc.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bc.tenant_id));
+
+INSERT INTO contacts (id, name, company_name, email, phone, address, tax_id, bank_name, bank_account, mfo, website, notes, type, is_active, telegram, instagram, facebook, linkedin, assigned_user_id, company_id, tenant_id, created_at, updated_at)
+SELECT * FROM backup_contacts bc 
+WHERE NOT EXISTS (SELECT 1 FROM contacts LIMIT 1)
+AND (bc.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bc.company_id))
+AND (bc.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bc.tenant_id));
+
+INSERT INTO leads (id, title, description, status, source, estimated_value, probability, contact_name, contact_email, contact_phone, company_name, address, city, region, notes, tags, follow_up_date, converted_date, assigned_user_id, company_id, tenant_id, contact_id, created_at, updated_at)
+SELECT * FROM backup_leads bl 
+WHERE NOT EXISTS (SELECT 1 FROM leads LIMIT 1)
+AND (bl.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bl.company_id))
+AND (bl.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bl.tenant_id))
+AND (bl.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts WHERE id = bl.contact_id));
+
+INSERT INTO deals (id, title, description, status, priority, deal_value, expected_close_date, actual_close_date, probability, confidence_level, primary_contact, contact_email, contact_phone, company_name, products_services, next_steps, lost_reason, tags, notes, assigned_user_id, company_id, tenant_id, contact_id, lead_id, created_at, updated_at)
+SELECT * FROM backup_deals bd 
+WHERE NOT EXISTS (SELECT 1 FROM deals LIMIT 1)
+AND (bd.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bd.company_id))
+AND (bd.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bd.tenant_id))
+AND (bd.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts WHERE id = bd.contact_id))
+AND (bd.lead_id IS NULL OR EXISTS (SELECT 1 FROM leads WHERE id = bd.lead_id));
+
+INSERT INTO activities (id, title, description, type, status, scheduled_date, completed_date, duration_minutes, location, outcome, priority, reminder_date, reminder_sent, notes, user_id, company_id, contact_id, lead_id, deal_id, created_at, updated_at)
+SELECT * FROM backup_activities ba 
+WHERE NOT EXISTS (SELECT 1 FROM activities LIMIT 1)
+AND (ba.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = ba.company_id))
+AND (ba.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts WHERE id = ba.contact_id))
+AND (ba.lead_id IS NULL OR EXISTS (SELECT 1 FROM leads WHERE id = ba.lead_id))
+AND (ba.deal_id IS NULL OR EXISTS (SELECT 1 FROM deals WHERE id = ba.deal_id));
+
+INSERT INTO transactions (id, amount, type, category, description, date, vat_included, vat_amount, tax_amount, reference_number, attachment_url, is_reconciled, user_id, company_id, tenant_id, contact_id, invoice_id, created_at, updated_at)
+SELECT * FROM backup_transactions bt 
+WHERE NOT EXISTS (SELECT 1 FROM transactions LIMIT 1)
+AND (bt.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bt.company_id))
+AND (bt.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bt.tenant_id))
+AND (bt.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts WHERE id = bt.contact_id))
+AND (bt.invoice_id IS NULL OR EXISTS (SELECT 1 FROM invoices WHERE id = bt.invoice_id));
+
+INSERT INTO invoices (id, invoice_number, status, customer_name, customer_tax_id, customer_address, customer_phone, customer_email, subtotal, vat_amount, total_amount, paid_amount, remaining_amount, issue_date, due_date, paid_date, notes, terms, template_name, payment_method, payment_reference, is_recurring, recurring_interval, recurring_end_date, created_by_id, company_id, tenant_id, contact_id, created_at, updated_at)
+SELECT * FROM backup_invoices bi 
+WHERE NOT EXISTS (SELECT 1 FROM invoices LIMIT 1)
+AND (bi.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bi.company_id))
+AND (bi.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bi.tenant_id))
+AND (bi.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts WHERE id = bi.contact_id))
+AND (bi.created_by_id IS NULL OR EXISTS (SELECT 1 FROM app_users WHERE id = bi.created_by_id));
+
+INSERT INTO invoice_items (id, description, quantity, unit_price, discount, vat_rate, line_total, invoice_id, created_at, updated_at)
+SELECT * FROM backup_invoice_items bii 
+WHERE NOT EXISTS (SELECT 1 FROM invoice_items LIMIT 1)
+AND (bii.invoice_id IS NULL OR EXISTS (SELECT 1 FROM invoices WHERE id = bii.invoice_id));
+
+INSERT INTO tasks (id, title, description, status, priority, assigned_to, created_by, due_date, completed_at, company_id, tenant_id, created_at, updated_at)
+SELECT * FROM backup_tasks bt 
+WHERE NOT EXISTS (SELECT 1 FROM tasks LIMIT 1)
+AND (bt.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bt.company_id))
+AND (bt.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bt.tenant_id))
+AND (bt.assigned_to IS NULL OR EXISTS (SELECT 1 FROM app_users WHERE id = bt.assigned_to))
+AND (bt.created_by IS NULL OR EXISTS (SELECT 1 FROM app_users WHERE id = bt.created_by));
+
+INSERT INTO task_comments (id, task_id, content, created_by, created_at, updated_at)
+SELECT * FROM backup_task_comments btc 
+WHERE NOT EXISTS (SELECT 1 FROM task_comments LIMIT 1)
+AND (btc.task_id IS NULL OR EXISTS (SELECT 1 FROM tasks WHERE id = btc.task_id))
+AND (btc.created_by IS NULL OR EXISTS (SELECT 1 FROM app_users WHERE id = btc.created_by));
+
+INSERT INTO templates (id, name, type, description, data, is_recurring, recurring_interval, recurring_day, created_by, tenant_id, company_id, created_at, updated_at)
+SELECT * FROM backup_templates bt 
+WHERE NOT EXISTS (SELECT 1 FROM templates LIMIT 1)
+AND (bt.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bt.company_id))
+AND (bt.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bt.tenant_id))
+AND (bt.created_by IS NULL OR EXISTS (SELECT 1 FROM app_users WHERE id = bt.created_by));
+
+INSERT INTO recurring_schedules (id, template_id, schedule_type, next_run_date, is_active, created_at, updated_at)
+SELECT * FROM backup_recurring_schedules brs 
+WHERE NOT EXISTS (SELECT 1 FROM recurring_schedules LIMIT 1)
+AND (brs.template_id IS NULL OR EXISTS (SELECT 1 FROM templates WHERE id = brs.template_id));
+
+INSERT INTO kpis (id, company_id, tenant_id, category, period, value, previous_value, target_value, date, created_at, updated_at)
+SELECT * FROM backup_kpis bk 
+WHERE NOT EXISTS (SELECT 1 FROM kpis LIMIT 1)
+AND (bk.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bk.company_id))
+AND (bk.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants WHERE id = bk.tenant_id));
+
+INSERT INTO kpi_trends (id, kpi_id, date, value, trend_percentage, created_at, updated_at)
+SELECT * FROM backup_kpi_trends bkt 
+WHERE NOT EXISTS (SELECT 1 FROM kpi_trends LIMIT 1)
+AND (bkt.kpi_id IS NULL OR EXISTS (SELECT 1 FROM kpis WHERE id = bkt.kpi_id));
+
+INSERT INTO kpi_alerts (id, kpi_id, alert_type, threshold_value, comparison_operator, is_active, created_at, updated_at)
+SELECT * FROM backup_kpi_alerts bka 
+WHERE NOT EXISTS (SELECT 1 FROM kpi_alerts LIMIT 1)
+AND (bka.kpi_id IS NULL OR EXISTS (SELECT 1 FROM kpis WHERE id = bka.kpi_id));
 
 -- ================================================================
 -- CLEANUP - DROP BACKUP TABLES
