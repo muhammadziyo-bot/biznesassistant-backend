@@ -1,7 +1,6 @@
 -- ================================================================
 -- BIZNESASSISTANT PRODUCTION MIGRATION - PUBLIC SCHEMA
 -- Optimized for Supabase compatibility and immediate functionality
--- DATA-PRESERVING VERSION - Only adds missing columns, preserves existing data
 -- ================================================================
 
 -- Create extensions
@@ -10,30 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "btree_gin";
 
 -- ================================================================
--- DATA PRESERVATION - BACKUP EXISTING DATA
--- ================================================================
-
--- Create backup tables if they don't exist
-CREATE TABLE IF NOT EXISTS backup_app_users AS SELECT * FROM app_users;
-CREATE TABLE IF NOT EXISTS backup_tenants AS SELECT * FROM tenants;
-CREATE TABLE IF NOT EXISTS backup_companies AS SELECT * FROM companies;
-CREATE TABLE IF NOT EXISTS backup_contacts AS SELECT * FROM contacts;
-CREATE TABLE IF NOT EXISTS backup_leads AS SELECT * FROM leads;
-CREATE TABLE IF NOT EXISTS backup_deals AS SELECT * FROM deals;
-CREATE TABLE IF NOT EXISTS backup_activities AS SELECT * FROM activities;
-CREATE TABLE IF NOT EXISTS backup_transactions AS SELECT * FROM transactions;
-CREATE TABLE IF NOT EXISTS backup_invoices AS SELECT * FROM invoices;
-CREATE TABLE IF NOT EXISTS backup_invoice_items AS SELECT * FROM invoice_items;
-CREATE TABLE IF NOT EXISTS backup_tasks AS SELECT * FROM tasks;
-CREATE TABLE IF NOT EXISTS backup_task_comments AS SELECT * FROM task_comments;
-CREATE TABLE IF NOT EXISTS backup_templates AS SELECT * FROM templates;
-CREATE TABLE IF NOT EXISTS backup_recurring_schedules AS SELECT * FROM recurring_schedules;
-CREATE TABLE IF NOT EXISTS backup_kpis AS SELECT * FROM kpis;
-CREATE TABLE IF NOT EXISTS backup_kpi_trends AS SELECT * FROM kpi_trends;
-CREATE TABLE IF NOT EXISTS backup_kpi_alerts AS SELECT * FROM kpi_alerts;
-
--- ================================================================
--- DROP EXISTING TABLES (clean slate)
+-- CORE SCHEMA FIXES (Clean Slate)
 -- ================================================================
 DROP TABLE IF EXISTS task_comments CASCADE;
 DROP TABLE IF EXISTS recurring_schedules CASCADE;
