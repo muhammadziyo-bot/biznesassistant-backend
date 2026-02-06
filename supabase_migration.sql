@@ -264,6 +264,14 @@ CREATE TABLE invoices (
     subtotal NUMERIC(15,2) NOT NULL,
     vat_amount NUMERIC(15,2) DEFAULT 0,
     total_amount NUMERIC(15,2) NOT NULL,
+    paid_amount NUMERIC(15,2) DEFAULT 0,
+    remaining_amount NUMERIC(15,2) NOT NULL,
+    paid_date TIMESTAMPTZ,
+    
+    -- Additional information
+    notes TEXT,
+    terms TEXT,
+    template_name VARCHAR DEFAULT 'default',
     
     -- Payment information
     payment_method VARCHAR,
