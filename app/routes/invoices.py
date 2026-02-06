@@ -40,7 +40,7 @@ def generate_invoice_number(db: Session, company_id: int, tenant_id: int) -> str
     
     return f"{prefix}{new_num:06d}"
 
-@router.post("/invoices", response_model=InvoiceResponse)
+@router.post("/", response_model=InvoiceResponse)
 async def create_invoice(
     invoice: InvoiceCreate,
     db: Session = Depends(get_db),
@@ -131,7 +131,7 @@ async def create_invoice(
                 detail=f"Failed to create invoice: {str(e)}"
             )
 
-@router.get("/invoices", response_model=List[InvoiceResponse])
+@router.get("/", response_model=List[InvoiceResponse])
 async def get_invoices(
     skip: int = 0,
     limit: int = 100,
@@ -168,7 +168,7 @@ async def get_invoices(
     invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
     return invoices
 
-@router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+@router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
@@ -190,7 +190,7 @@ async def get_invoice(
     
     return invoice
 
-@router.put("/invoices/{invoice_id}", response_model=InvoiceResponse)
+@router.put("/{invoice_id}", response_model=InvoiceResponse)
 async def update_invoice(
     invoice_id: int,
     invoice_update: InvoiceUpdate,
@@ -219,7 +219,7 @@ async def update_invoice(
     db.refresh(invoice)
     return invoice
 
-@router.post("/invoices/{invoice_id}/send")
+@router.post("/{invoice_id}/send")
 async def send_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
@@ -244,7 +244,7 @@ async def send_invoice(
     
     return {"message": "Invoice sent successfully"}
 
-@router.post("/invoices/{invoice_id}/mark-paid")
+@router.post("/{invoice_id}/mark-paid")
 async def mark_invoice_paid(
     invoice_id: int,
     paid_amount: float,
@@ -281,7 +281,7 @@ async def mark_invoice_paid(
     
     return {"message": "Payment recorded successfully"}
 
-@router.get("/invoices-summary")
+@router.get("/summary")
 async def get_invoices_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
