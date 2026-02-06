@@ -131,6 +131,17 @@ async def create_invoice(
                 detail=f"Failed to create invoice: {str(e)}"
             )
 
+# Legacy route for frontend compatibility
+@router.post("/invoices", response_model=InvoiceResponse)
+async def create_invoice_legacy(
+    invoice: InvoiceCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
+):
+    """Legacy route for frontend compatibility - redirects to main create_invoice."""
+    return await create_invoice(invoice, db, current_user, tenant_id)
+
 @router.get("/", response_model=List[InvoiceResponse])
 async def get_invoices(
     skip: int = 0,
