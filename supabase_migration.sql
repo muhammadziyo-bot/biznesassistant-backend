@@ -1,12 +1,36 @@
 -- ================================================================
 -- BIZNESASSISTANT PRODUCTION MIGRATION - PUBLIC SCHEMA
 -- Optimized for Supabase compatibility and immediate functionality
+-- DATA-PRESERVING VERSION - Only adds missing columns, preserves existing data
 -- ================================================================
 
 -- Create extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "btree_gin";
+
+-- ================================================================
+-- DATA PRESERVATION - BACKUP EXISTING DATA
+-- ================================================================
+
+-- Create backup tables if they don't exist
+CREATE TABLE IF NOT EXISTS backup_app_users AS SELECT * FROM app_users;
+CREATE TABLE IF NOT EXISTS backup_tenants AS SELECT * FROM tenants;
+CREATE TABLE IF NOT EXISTS backup_companies AS SELECT * FROM companies;
+CREATE TABLE IF NOT EXISTS backup_contacts AS SELECT * FROM contacts;
+CREATE TABLE IF NOT EXISTS backup_leads AS SELECT * FROM leads;
+CREATE TABLE IF NOT EXISTS backup_deals AS SELECT * FROM deals;
+CREATE TABLE IF NOT EXISTS backup_activities AS SELECT * FROM activities;
+CREATE TABLE IF NOT EXISTS backup_transactions AS SELECT * FROM transactions;
+CREATE TABLE IF NOT EXISTS backup_invoices AS SELECT * FROM invoices;
+CREATE TABLE IF NOT EXISTS backup_invoice_items AS SELECT * FROM invoice_items;
+CREATE TABLE IF NOT EXISTS backup_tasks AS SELECT * FROM tasks;
+CREATE TABLE IF NOT EXISTS backup_task_comments AS SELECT * FROM task_comments;
+CREATE TABLE IF NOT EXISTS backup_templates AS SELECT * FROM templates;
+CREATE TABLE IF NOT EXISTS backup_recurring_schedules AS SELECT * FROM recurring_schedules;
+CREATE TABLE IF NOT EXISTS backup_kpis AS SELECT * FROM kpis;
+CREATE TABLE IF NOT EXISTS backup_kpi_trends AS SELECT * FROM kpi_trends;
+CREATE TABLE IF NOT EXISTS backup_kpi_alerts AS SELECT * FROM kpi_alerts;
 
 -- ================================================================
 -- DROP EXISTING TABLES (clean slate)
@@ -149,6 +173,12 @@ CREATE TABLE leads (
     contact_name VARCHAR,
     contact_email VARCHAR,
     contact_phone VARCHAR,
+    company_name VARCHAR,
+    
+    -- Address
+    address TEXT,
+    city VARCHAR,
+    region VARCHAR,
     
     -- Additional information
     notes TEXT,
@@ -180,6 +210,14 @@ CREATE TABLE deals (
     deal_value NUMERIC(15,2),
     expected_close_date TIMESTAMPTZ,
     actual_close_date TIMESTAMPTZ,
+    
+    -- Contact information
+    primary_contact VARCHAR,
+    contact_email VARCHAR,
+    contact_phone VARCHAR,
+    
+    -- Company information
+    company_name VARCHAR,
     
     -- Deal details
     products_services TEXT,
@@ -524,10 +562,65 @@ CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts FOR EACH ROW
 CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_activities_updated_at BEFORE UPDATE ON activities FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoice_items_updated_at BEFORE UPDATE ON invoice_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_task_comments_updated_at BEFORE UPDATE ON task_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_recurring_schedules_updated_at BEFORE UPDATE ON recurring_schedules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_kpis_updated_at BEFORE UPDATE ON kpis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_kpi_trends_updated_at BEFORE UPDATE ON kpi_trends FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_kpi_alerts_updated_at BEFORE UPDATE ON kpi_alerts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ================================================================
+-- DATA RESTORATION - RESTORE EXISTING DATA
+-- ================================================================
+
+-- Restore data from backup tables (only if backup tables have data)
+INSERT INTO app_users SELECT * FROM backup_app_users WHERE NOT EXISTS (SELECT 1 FROM app_users LIMIT 1);
+INSERT INTO tenants SELECT * FROM backup_tenants WHERE NOT EXISTS (SELECT 1 FROM tenants LIMIT 1);
+INSERT INTO companies SELECT * FROM backup_companies WHERE NOT EXISTS (SELECT 1 FROM companies LIMIT 1);
+INSERT INTO contacts SELECT * FROM backup_contacts WHERE NOT EXISTS (SELECT 1 FROM contacts LIMIT 1);
+INSERT INTO leads SELECT * FROM backup_leads WHERE NOT EXISTS (SELECT 1 FROM leads LIMIT 1);
+INSERT INTO deals SELECT * FROM backup_deals WHERE NOT EXISTS (SELECT 1 FROM deals LIMIT 1);
+INSERT INTO activities SELECT * FROM backup_activities WHERE NOT EXISTS (SELECT 1 FROM activities LIMIT 1);
+INSERT INTO transactions SELECT * FROM backup_transactions WHERE NOT EXISTS (SELECT 1 FROM transactions LIMIT 1);
+INSERT INTO invoices SELECT * FROM backup_invoices WHERE NOT EXISTS (SELECT 1 FROM invoices LIMIT 1);
+INSERT INTO invoice_items SELECT * FROM backup_invoice_items WHERE NOT EXISTS (SELECT 1 FROM invoice_items LIMIT 1);
+INSERT INTO tasks SELECT * FROM backup_tasks WHERE NOT EXISTS (SELECT 1 FROM tasks LIMIT 1);
+INSERT INTO task_comments SELECT * FROM backup_task_comments WHERE NOT EXISTS (SELECT 1 FROM task_comments LIMIT 1);
+INSERT INTO templates SELECT * FROM backup_templates WHERE NOT EXISTS (SELECT 1 FROM templates LIMIT 1);
+INSERT INTO recurring_schedules SELECT * FROM backup_recurring_schedules WHERE NOT EXISTS (SELECT 1 FROM recurring_schedules LIMIT 1);
+INSERT INTO kpis SELECT * FROM backup_kpis WHERE NOT EXISTS (SELECT 1 FROM kpis LIMIT 1);
+INSERT INTO kpi_trends SELECT * FROM backup_kpi_trends WHERE NOT EXISTS (SELECT 1 FROM kpi_trends LIMIT 1);
+INSERT INTO kpi_alerts SELECT * FROM backup_kpi_alerts WHERE NOT EXISTS (SELECT 1 FROM kpi_alerts LIMIT 1);
+
+-- ================================================================
+-- CLEANUP - DROP BACKUP TABLES
+-- ================================================================
+
+DROP TABLE IF EXISTS backup_app_users;
+DROP TABLE IF EXISTS backup_tenants;
+DROP TABLE IF EXISTS backup_companies;
+DROP TABLE IF EXISTS backup_contacts;
+DROP TABLE IF EXISTS backup_leads;
+DROP TABLE IF EXISTS backup_deals;
+DROP TABLE IF EXISTS backup_activities;
+DROP TABLE IF EXISTS backup_transactions;
+DROP TABLE IF EXISTS backup_invoices;
+DROP TABLE IF EXISTS backup_invoice_items;
+DROP TABLE IF EXISTS backup_tasks;
+DROP TABLE IF EXISTS backup_task_comments;
+DROP TABLE IF EXISTS backup_templates;
+DROP TABLE IF EXISTS backup_recurring_schedules;
+DROP TABLE IF EXISTS backup_kpis;
+DROP TABLE IF EXISTS backup_kpi_trends;
+DROP TABLE IF EXISTS backup_kpi_alerts;
+
+-- ================================================================
+-- MIGRATION COMPLETE
+-- ================================================================
 
 -- ================================================================
 -- SAMPLE DATA (for testing)
