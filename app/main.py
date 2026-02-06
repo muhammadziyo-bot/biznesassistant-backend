@@ -81,7 +81,7 @@ async def add_security_headers(request: Request, call_next):
         "style-src 'self' 'unsafe-inline'",  # Allow inline styles for Tailwind
         "img-src 'self' data: https:",
         "font-src 'self' data:",
-        "connect-src 'self'",
+        "connect-src 'self' https://biznesassistant-backend.onrender.com https://*.onrender.com",  # Allow API calls to backend
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'"
