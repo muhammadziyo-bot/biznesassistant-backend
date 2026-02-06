@@ -49,6 +49,13 @@ class InvoiceBase(BaseModel):
     issue_date: datetime
     due_date: datetime
     items: List[InvoiceItemCreate]
+    
+    # Calculated fields (will be computed by backend)
+    subtotal: Optional[Decimal] = None
+    vat_amount: Optional[Decimal] = None
+    total_amount: Optional[Decimal] = None
+    remaining_amount: Optional[Decimal] = None
+    status: Optional[InvoiceStatus] = None
 
 class InvoiceCreate(InvoiceBase):
     contact_id: Optional[int] = None
