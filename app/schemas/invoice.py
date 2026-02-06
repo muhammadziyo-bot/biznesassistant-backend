@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -10,6 +10,12 @@ class InvoiceItemBase(BaseModel):
     unit_price: Decimal
     discount: Optional[Decimal] = 0
     vat_rate: Optional[Decimal] = 12
+    
+    @validator('quantity', 'unit_price', 'discount', 'vat_rate', pre=True)
+    def parse_decimal(cls, v):
+        if isinstance(v, (int, float, str)):
+            return Decimal(str(v))
+        return v
 
 class InvoiceItemCreate(InvoiceItemBase):
     pass
@@ -56,6 +62,14 @@ class InvoiceBase(BaseModel):
     total_amount: Optional[Decimal] = None
     remaining_amount: Optional[Decimal] = None
     status: Optional[InvoiceStatus] = None
+    
+    @validator('paid_amount', 'subtotal', 'vat_amount', 'total_amount', 'remaining_amount', pre=True)
+    def parse_decimal(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, (int, float, str)):
+            return Decimal(str(v))
+        return v
 
 class InvoiceCreate(InvoiceBase):
     contact_id: Optional[int] = None

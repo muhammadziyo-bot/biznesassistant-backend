@@ -52,17 +52,26 @@ async def create_invoice(
     company_id = current_user.company_id or 1
     
     try:
+        # Debug: Print incoming data
+        print(f"DEBUG: Invoice data: {invoice.dict()}")
+        print(f"DEBUG: Company ID: {company_id}, Tenant ID: {tenant_id}")
+        
         # Generate invoice number with the correct company_id and tenant_id
         invoice_number = generate_invoice_number(db, company_id, tenant_id)
+        print(f"DEBUG: Generated invoice number: {invoice_number}")
         
         # Create invoice
+        invoice_data = invoice.dict(exclude={"items"})
+        print(f"DEBUG: Invoice data for creation: {invoice_data}")
+        
         db_invoice = Invoice(
-            **invoice.dict(exclude={"items"}),
+            **invoice_data,
             invoice_number=invoice_number,
             created_by_id=current_user.id,
             company_id=company_id,
             tenant_id=tenant_id
         )
+        print(f"DEBUG: Invoice object created successfully")
         
         # Calculate totals from items
         subtotal = Decimal('0')
@@ -105,6 +114,11 @@ async def create_invoice(
     
     except Exception as e:
         db.rollback()
+        print(f"DEBUG: Error creating invoice: {str(e)}")
+        print(f"DEBUG: Error type: {type(e)}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        
         # Check if it's a duplicate key error
         if "duplicate key" in str(e) and "invoice_number" in str(e):
             raise HTTPException(
