@@ -583,7 +583,7 @@ SELECT * FROM backup_app_users bu
 WHERE NOT EXISTS (SELECT 1 FROM app_users LIMIT 1)
 AND (bu.company_id IS NULL OR EXISTS (SELECT 1 FROM companies WHERE id = bu.company_id));
 
-INSERT INTO tenants (id, name, tax_id, email, phone, industry, employee_count, subscription_tier, subscription_status, trial_ends_at, subscription_ends_at, is_active, is_verified, created_at, updated_at)
+INSERT INTO tenants (id, name, tax_id, email, phone, address, industry, employee_count, subscription_tier, subscription_status, trial_ends_at, subscription_ends_at, is_active, is_verified, created_at, updated_at)
 SELECT * FROM backup_tenants bt 
 WHERE NOT EXISTS (SELECT 1 FROM tenants LIMIT 1);
 
