@@ -94,12 +94,28 @@ def get_current_user(
 
 def get_current_tenant(current_user: User = Depends(get_current_user)) -> int:
     """Get current tenant ID from authenticated user."""
-    if not current_user.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not associated with any tenant"
-        )
-    return current_user.tenant_id
+    # If user has direct tenant_id, use it
+    if current_user.tenant_id:
+        return current_user.tenant_id
+    
+    # If user has company_id, get tenant from company
+    if current_user.company_id:
+        from app.database import get_db
+        from app.models.company import Company
+        db = next(get_db())
+        try:
+            company = db.query(Company).filter(
+                Company.id == current_user.company_id
+            ).first()
+            if company and company.tenant_id:
+                return company.tenant_id
+        finally:
+            db.close()
+    
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="User not associated with any tenant"
+    )
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user."""
