@@ -263,7 +263,7 @@ CREATE TABLE activities (
 CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
     invoice_number VARCHAR UNIQUE NOT NULL,
-    status VARCHAR DEFAULT 'draft',
+    status VARCHAR CHECK (status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled')) DEFAULT 'draft',
     
     -- Customer information
     customer_name VARCHAR NOT NULL,
