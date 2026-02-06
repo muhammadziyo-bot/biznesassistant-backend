@@ -422,11 +422,22 @@ async def get_activities(
     limit: int = 100,
     activity_type: Optional[ActivityType] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get activities with filters."""
-    company_id = current_user.company_id or 1
-    query = db.query(Activity).filter(Activity.company_id == company_id)
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
+    query = db.query(Activity).filter(
+        and_(
+            Activity.company_id == current_user.company_id,
+            # Note: Activity model doesn't have tenant_id, only company_id
+        )
+    )
     
     if activity_type:
         query = query.filter(Activity.type == activity_type)
@@ -437,29 +448,45 @@ async def get_activities(
 @router.get("/crm-summary")
 async def get_crm_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
 ):
     """Get CRM summary for dashboard."""
-    company_id = current_user.company_id or 1
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not associated with any company"
+        )
+    
     # Count contacts by type
     contacts_by_type = db.query(Contact.type, db.func.count(Contact.id)).filter(
-        Contact.company_id == company_id
+        and_(
+            Contact.company_id == current_user.company_id,
+            Contact.tenant_id == tenant_id
+        )
     ).group_by(Contact.type).all()
     
     # Count leads by status
     leads_by_status = db.query(Lead.status, db.func.count(Lead.id)).filter(
-        Lead.company_id == company_id
+        and_(
+            Lead.company_id == current_user.company_id,
+            Lead.tenant_id == tenant_id
+        )
     ).group_by(Lead.status).all()
     
     # Count deals by status
     deals_by_status = db.query(Deal.status, db.func.count(Deal.id)).filter(
-        Deal.company_id == company_id
+        and_(
+            Deal.company_id == current_user.company_id,
+            Deal.tenant_id == tenant_id
+        )
     ).group_by(Deal.status).all()
     
     # Calculate total deal value
     total_deal_value = db.query(db.func.sum(Deal.deal_value)).filter(
         and_(
-            Deal.company_id == company_id,
+            Deal.company_id == current_user.company_id,
+            Deal.tenant_id == tenant_id,
             Deal.deal_value.isnot(None)
         )
     ).scalar() or 0
@@ -467,7 +494,7 @@ async def get_crm_summary(
     # Recent activities count
     recent_activities = db.query(db.func.count(Activity.id)).filter(
         and_(
-            Activity.company_id == company_id,
+            Activity.company_id == current_user.company_id,
             Activity.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         )
     ).scalar() or 0
