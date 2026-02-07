@@ -68,7 +68,7 @@ class InvoiceBase(BaseModel):
     remaining_amount: Optional[Decimal] = None
     status: Optional[InvoiceStatus] = None
     
-    @validator('issue_date', 'due_date', 'recurring_end_date', 'paid_date', pre=True)
+    @validator('issue_date', 'due_date', 'recurring_end_date', pre=True)
     def parse_datetime(cls, v):
         if v is None:
             return None
@@ -115,7 +115,7 @@ class InvoiceUpdate(BaseModel):
     paid_date: Optional[datetime] = None
     contact_id: Optional[int] = None
     
-    @validator('issue_date', 'due_date', 'recurring_end_date', 'paid_date', pre=True)
+    @validator('issue_date', 'due_date', 'recurring_end_date', pre=True)
     def parse_datetime(cls, v):
         if v is None:
             return None
