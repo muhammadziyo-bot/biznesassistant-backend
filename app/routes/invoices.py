@@ -76,9 +76,15 @@ async def create_invoice(
         # Calculate totals from items
         subtotal = Decimal('0')
         for item_data in invoice.items:
-            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
-            if item_data.discount:
-                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
+            # Use provided line_total or total_price, or calculate if not provided
+            if hasattr(item_data, 'line_total') and item_data.line_total is not None:
+                line_total = Decimal(str(item_data.line_total))
+            elif hasattr(item_data, 'total_price') and item_data.total_price is not None:
+                line_total = Decimal(str(item_data.total_price))
+            else:
+                line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
+                if item_data.discount:
+                    line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
             
             item_vat = line_total * Decimal(str(item_data.vat_rate)) / Decimal('100')
             subtotal += line_total
@@ -95,9 +101,11 @@ async def create_invoice(
         
         # Create invoice items
         for item_data in invoice.items:
-            # Use provided line_total or calculate if not provided
+            # Use provided line_total or total_price, or calculate if not provided
             if hasattr(item_data, 'line_total') and item_data.line_total is not None:
                 line_total = Decimal(str(item_data.line_total))
+            elif hasattr(item_data, 'total_price') and item_data.total_price is not None:
+                line_total = Decimal(str(item_data.total_price))
             else:
                 line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
                 if item_data.discount:

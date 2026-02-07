@@ -11,8 +11,9 @@ class InvoiceItemBase(BaseModel):
     discount: Optional[Decimal] = 0
     vat_rate: Optional[Decimal] = 12
     line_total: Optional[Decimal] = None
+    total_price: Optional[Decimal] = None  # Frontend sends this instead of line_total
     
-    @validator('quantity', 'unit_price', 'discount', 'vat_rate', 'line_total', pre=True)
+    @validator('quantity', 'unit_price', 'discount', 'vat_rate', 'line_total', 'total_price', pre=True)
     def parse_decimal(cls, v):
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
@@ -28,6 +29,7 @@ class InvoiceItemUpdate(BaseModel):
     discount: Optional[Decimal] = None
     vat_rate: Optional[Decimal] = None
     line_total: Optional[Decimal] = None
+    total_price: Optional[Decimal] = None
 
 class InvoiceItemResponse(InvoiceItemBase):
     id: int
