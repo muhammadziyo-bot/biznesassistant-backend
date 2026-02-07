@@ -36,6 +36,9 @@ class InvoiceItemResponse(InvoiceItemBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            Decimal: str
+        }
 
 class InvoiceBase(BaseModel):
     customer_name: str
@@ -112,3 +115,6 @@ class InvoiceResponse(InvoiceBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            Decimal: str
+        }

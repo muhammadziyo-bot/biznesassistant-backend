@@ -231,7 +231,7 @@ async def create_invoice_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main create_invoice."""
-    return await create_invoice(invoice, db, current_user, tenant_id)
+    return create_invoice(invoice, db, current_user, tenant_id)
 
 @router.get("/", response_model=List[InvoiceResponse])
 async def get_invoices(
@@ -301,7 +301,7 @@ async def get_invoice_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main get_invoice."""
-    return await get_invoice(invoice_id, db, current_user, tenant_id)
+    return get_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.put("/{invoice_id}", response_model=InvoiceResponse)
 async def update_invoice(
@@ -342,7 +342,7 @@ async def update_invoice_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main update_invoice."""
-    return await update_invoice(invoice_id, invoice_update, db, current_user, tenant_id)
+    return update_invoice(invoice_id, invoice_update, db, current_user, tenant_id)
 
 @router.post("/{invoice_id}/send")
 async def send_invoice(
@@ -378,7 +378,7 @@ async def send_invoice_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main send_invoice."""
-    return await send_invoice(invoice_id, db, current_user, tenant_id)
+    return send_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.post("/{invoice_id}/mark-paid")
 async def mark_invoice_paid(
@@ -427,7 +427,7 @@ async def mark_invoice_paid_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main mark_invoice_paid."""
-    return await mark_invoice_paid(invoice_id, paid_amount, db, current_user, tenant_id)
+    return mark_invoice_paid(invoice_id, paid_amount, db, current_user, tenant_id)
 
 @router.delete("/{invoice_id}")
 async def delete_invoice(
@@ -467,7 +467,7 @@ async def delete_invoice_legacy(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Legacy route for frontend compatibility - redirects to main delete_invoice."""
-    return await delete_invoice(invoice_id, db, current_user, tenant_id)
+    return delete_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.get("/summary")
 async def get_invoices_summary(
