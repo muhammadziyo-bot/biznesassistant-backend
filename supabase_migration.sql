@@ -259,8 +259,13 @@ CREATE TABLE activities (
 -- ACCOUNTING MODULE
 -- ================================================================
 
--- Create ENUM types for proper constraints
-CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'paid', 'overdue', 'cancelled');
+-- Create ENUM types for proper constraints (if not exists)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status') THEN
+        CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'paid', 'overdue', 'cancelled');
+    END IF;
+END $$;
 
 -- Invoices
 CREATE TABLE invoices (
