@@ -259,11 +259,14 @@ CREATE TABLE activities (
 -- ACCOUNTING MODULE
 -- ================================================================
 
+-- Create ENUM types for proper constraints
+CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'paid', 'overdue', 'cancelled');
+
 -- Invoices
 CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
     invoice_number VARCHAR UNIQUE NOT NULL,
-    status VARCHAR CHECK (status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled')) DEFAULT 'draft',
+    status invoice_status DEFAULT 'draft',
     
     -- Customer information
     customer_name VARCHAR NOT NULL,
