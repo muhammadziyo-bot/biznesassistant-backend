@@ -318,11 +318,12 @@ CREATE TABLE invoices (
 CREATE TABLE invoice_items (
     id SERIAL PRIMARY KEY,
     description TEXT NOT NULL,
-    quantity NUMERIC(10,2) NOT NULL,
+    quantity NUMERIC(15,2) NOT NULL,
     unit_price NUMERIC(15,2) NOT NULL,
     discount NUMERIC(5,2) DEFAULT 0,
     vat_rate NUMERIC(5,2) DEFAULT 12,
     line_total NUMERIC(15,2) NOT NULL,
+    total_price NUMERIC(15,2),  -- Frontend compatibility field
     
     -- Foreign keys
     invoice_id INTEGER REFERENCES invoices(id) NOT NULL,

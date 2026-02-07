@@ -74,11 +74,12 @@ class InvoiceItem(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     description = Column(Text, nullable=False)
-    quantity = Column(Numeric(10, 2), nullable=False)
+    quantity = Column(Numeric(15, 2), nullable=False)
     unit_price = Column(Numeric(15, 2), nullable=False)
     discount = Column(Numeric(5, 2), default=0)  # percentage
     vat_rate = Column(Numeric(5, 2), default=12)  # percentage
     line_total = Column(Numeric(15, 2), nullable=False)
+    total_price = Column(Numeric(15, 2), nullable=True)  # Frontend compatibility field
     
     # Foreign keys
     invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
