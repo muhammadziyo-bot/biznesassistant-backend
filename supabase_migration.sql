@@ -277,7 +277,7 @@ CREATE TABLE invoices (
     
     -- Invoice details
     issue_date TIMESTAMPTZ DEFAULT NOW(),
-    due_date TIMESTAMPTZ,
+    due_date TIMESTAMPTZ NOT NULL,
     subtotal NUMERIC(15,2) NOT NULL,
     vat_amount NUMERIC(15,2) DEFAULT 0,
     total_amount NUMERIC(15,2) NOT NULL,
@@ -300,9 +300,9 @@ CREATE TABLE invoices (
     recurring_end_date TIMESTAMPTZ,
     
     -- Foreign keys
-    created_by_id INTEGER REFERENCES app_users(id),
-    company_id INTEGER REFERENCES companies(id),
-    tenant_id INTEGER REFERENCES tenants(id),
+    created_by_id INTEGER REFERENCES app_users(id) NOT NULL,
+    company_id INTEGER REFERENCES companies(id) NOT NULL,
+    tenant_id INTEGER REFERENCES tenants(id) NOT NULL,
     contact_id INTEGER REFERENCES contacts(id),
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -320,7 +320,7 @@ CREATE TABLE invoice_items (
     line_total NUMERIC(15,2) NOT NULL,
     
     -- Foreign keys
-    invoice_id INTEGER REFERENCES invoices(id),
+    invoice_id INTEGER REFERENCES invoices(id) NOT NULL,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
