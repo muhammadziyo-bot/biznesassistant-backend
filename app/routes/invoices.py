@@ -41,7 +41,7 @@ def generate_invoice_number(db: Session, company_id: int, tenant_id: int) -> str
     return f"{prefix}{new_num:06d}"
 
 @router.post("/", response_model=InvoiceResponse)
-async def create_invoice(
+def create_invoice(
     invoice: InvoiceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -147,7 +147,7 @@ async def create_invoice(
 
 # Legacy route for frontend compatibility
 @router.post("/invoices", response_model=InvoiceResponse)
-async def create_invoice_legacy(
+def create_invoice_legacy(
     invoice: InvoiceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -157,7 +157,7 @@ async def create_invoice_legacy(
     return create_invoice(invoice, db, current_user, tenant_id)
 
 @router.get("/", response_model=List[InvoiceResponse])
-async def get_invoices(
+def get_invoices(
     skip: int = 0,
     limit: int = 100,
     status: Optional[InvoiceStatus] = None,
@@ -169,32 +169,40 @@ async def get_invoices(
     tenant_id: int = Depends(get_current_tenant)
 ):
     """Get invoices with filters."""
-    # Use company_id with fallback, same as in create_invoice
-    company_id = current_user.company_id or 1
-    query = db.query(Invoice).filter(
-        and_(
-            Invoice.company_id == company_id,
-            Invoice.tenant_id == tenant_id
+    print(f"DEBUG: get_invoices called with skip={skip}, limit={limit}, status={status}")
+    try:
+        # Use company_id with fallback, same as in create_invoice
+        company_id = current_user.company_id or 1
+        query = db.query(Invoice).filter(
+            and_(
+                Invoice.company_id == company_id,
+                Invoice.tenant_id == tenant_id
+            )
         )
-    )
-    
-    if status:
-        query = query.filter(Invoice.status == status)
-    
-    if customer_name:
-        query = query.filter(Invoice.customer_name.ilike(f"%{customer_name}%"))
-    
-    if start_date:
-        query = query.filter(Invoice.issue_date >= start_date)
-    
-    if end_date:
-        query = query.filter(Invoice.issue_date <= end_date)
-    
-    invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
-    return invoices
+        
+        if status:
+            query = query.filter(Invoice.status == status)
+        
+        if customer_name:
+            query = query.filter(Invoice.customer_name.ilike(f"%{customer_name}%"))
+        
+        if start_date:
+            query = query.filter(Invoice.issue_date >= start_date)
+        
+        if end_date:
+            query = query.filter(Invoice.issue_date <= end_date)
+        
+        invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
+        print(f"DEBUG: Found {len(invoices)} invoices")
+        return invoices
+    except Exception as e:
+        print(f"DEBUG: Error in get_invoices: {str(e)}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        raise
 
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
-async def get_invoice(
+def get_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -217,7 +225,7 @@ async def get_invoice(
 
 # Legacy route for frontend compatibility
 @router.get("/invoices", response_model=List[InvoiceResponse])
-async def get_invoices_legacy(
+def get_invoices_legacy(
     skip: int = 0,
     limit: int = 100,
     status: Optional[InvoiceStatus] = None,
@@ -231,9 +239,9 @@ async def get_invoices_legacy(
     """Legacy route for frontend compatibility - redirects to main get_invoices."""
     return get_invoices(skip, limit, status, customer_name, start_date, end_date, db, current_user, tenant_id)
 
-# Legacy route for frontend compatibility
+# Legacy route for frontend compatibility - MUST come after /invoices
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
-async def get_invoice_legacy(
+def get_invoice_legacy(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -243,7 +251,7 @@ async def get_invoice_legacy(
     return get_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.put("/{invoice_id}", response_model=InvoiceResponse)
-async def update_invoice(
+def update_invoice(
     invoice_id: int,
     invoice_update: InvoiceUpdate,
     db: Session = Depends(get_db),
@@ -314,7 +322,7 @@ async def update_invoice(
 
 # Legacy route for frontend compatibility
 @router.put("/invoices/{invoice_id}", response_model=InvoiceResponse)
-async def update_invoice_legacy(
+def update_invoice_legacy(
     invoice_id: int,
     invoice_update: InvoiceUpdate,
     db: Session = Depends(get_db),
@@ -325,7 +333,7 @@ async def update_invoice_legacy(
     return update_invoice(invoice_id, invoice_update, db, current_user, tenant_id)
 
 @router.post("/{invoice_id}/send")
-async def send_invoice(
+def send_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -350,7 +358,7 @@ async def send_invoice(
 
 # Legacy route for frontend compatibility
 @router.post("/invoices/{invoice_id}/send")
-async def send_invoice_legacy(
+def send_invoice_legacy(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -360,7 +368,7 @@ async def send_invoice_legacy(
     return send_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.post("/{invoice_id}/mark-paid")
-async def mark_invoice_paid(
+def mark_invoice_paid(
     invoice_id: int,
     paid_amount: float,
     db: Session = Depends(get_db),
@@ -397,7 +405,7 @@ async def mark_invoice_paid(
 
 # Legacy route for frontend compatibility
 @router.post("/invoices/{invoice_id}/mark-paid")
-async def mark_invoice_paid_legacy(
+def mark_invoice_paid_legacy(
     invoice_id: int,
     paid_amount: float,
     db: Session = Depends(get_db),
@@ -408,7 +416,7 @@ async def mark_invoice_paid_legacy(
     return mark_invoice_paid(invoice_id, paid_amount, db, current_user, tenant_id)
 
 @router.delete("/{invoice_id}")
-async def delete_invoice(
+def delete_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -437,7 +445,7 @@ async def delete_invoice(
 
 # Legacy route for frontend compatibility
 @router.delete("/invoices/{invoice_id}")
-async def delete_invoice_legacy(
+def delete_invoice_legacy(
     invoice_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -447,7 +455,7 @@ async def delete_invoice_legacy(
     return delete_invoice(invoice_id, db, current_user, tenant_id)
 
 @router.get("/summary")
-async def get_invoices_summary(
+def get_invoices_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -502,7 +510,7 @@ async def get_invoices_summary(
 
 # Legacy route for frontend compatibility
 @router.get("/invoices/summary")
-async def get_invoices_summary_legacy(
+def get_invoices_summary_legacy(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -511,3 +519,4 @@ async def get_invoices_summary_legacy(
 ):
     """Legacy route for frontend compatibility - redirects to main get_invoices_summary."""
     return get_invoices_summary(start_date, end_date, db, current_user, tenant_id)
+     

@@ -153,5 +153,6 @@ class InvoiceResponse(InvoiceBase):
     class Config:
         from_attributes = True
         json_encoders = {
-            Decimal: str
+            Decimal: str,
+            InvoiceStatus: lambda v: v.value if hasattr(v, 'value') else str(v)
         }

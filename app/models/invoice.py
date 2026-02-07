@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.types import TypeDecorator, VARCHAR
 from app.models.base import Base
 import enum
 
@@ -11,12 +12,37 @@ class InvoiceStatus(enum.Enum):
     OVERDUE = "overdue"
     CANCELLED = "cancelled"
 
+class InvoiceStatusEnum(TypeDecorator):
+    """Custom enum type that handles both uppercase names and lowercase values"""
+    impl = VARCHAR(20)
+    
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, InvoiceStatus):
+            return value.value  # Store as lowercase value to match database enum
+        return str(value).lower()  # Convert any string to lowercase
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        # Handle both uppercase names and lowercase values
+        if isinstance(value, str):
+            value_upper = value.upper()
+            value_lower = value.lower()
+            
+            # Try to match by value first (lowercase), then by name (uppercase)
+            for status in InvoiceStatus:
+                if status.value == value_lower or status.name == value_upper:
+                    return status
+        raise ValueError(f"Invalid status value: {value}")
+
 class Invoice(Base):
     __tablename__ = "invoices"
     
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String, unique=True, nullable=False, index=True)
-    status = Column(Enum(InvoiceStatus), default=InvoiceStatus.DRAFT)
+    status = Column(InvoiceStatusEnum, default=InvoiceStatus.DRAFT)
     
     # Customer information
     customer_name = Column(String, nullable=False)
