@@ -2,7 +2,7 @@ from .base import Base
 from .user import User, UserRole
 from .company import Company
 from .transaction import Transaction, TransactionType, TransactionCategory
-from .invoice import Invoice, InvoiceStatus
+from .invoice import Invoice, InvoiceStatus, InvoiceItem
 from .contact import Contact
 from .lead import Lead, LeadStatus
 from .deal import Deal, DealStatus
@@ -16,7 +16,7 @@ __all__ = [
     "User", "UserRole",
     "Company", 
     "Transaction", "TransactionType", "TransactionCategory",
-    "Invoice", "InvoiceStatus",
+    "Invoice", "InvoiceStatus", "InvoiceItem",
     "Contact",
     "Lead", "LeadStatus", 
     "Deal", "DealStatus",

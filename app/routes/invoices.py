@@ -19,7 +19,7 @@ def generate_invoice_number(db: Session, company_id: int, tenant_id: int) -> str
     # New format: INV-TENANT{tenant_id}-YEAR-{6-digit number}
     prefix = f"INV-T{tenant_id}-{current_year}-"
     
-    # Get the last invoice number for this specific tenant and year
+    # Get last invoice number for this specific tenant and year
     last_invoice = db.query(Invoice).filter(
         and_(
             Invoice.company_id == company_id,
@@ -29,7 +29,7 @@ def generate_invoice_number(db: Session, company_id: int, tenant_id: int) -> str
     ).order_by(Invoice.invoice_number.desc()).first()
     
     if last_invoice:
-        # Extract the number part and increment
+        # Extract number part and increment
         try:
             last_num = int(last_invoice.invoice_number.split("-")[-1])
             new_num = last_num + 1
@@ -89,104 +89,19 @@ async def create_invoice(
         db_invoice.remaining_amount = db_invoice.total_amount
         
         db.add(db_invoice)
-        db.flush()  # Get the invoice ID
+        db.flush()  # Get the ID without committing
+        
+        print(f"DEBUG: Invoice saved with ID: {db_invoice.id}")
         
         # Create invoice items
         for item_data in invoice.items:
-            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
-            if item_data.discount:
-                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
-            
-            db_item = InvoiceItem(
-                invoice_id=db_invoice.id,
-                description=item_data.description,
-                quantity=item_data.quantity,
-                unit_price=item_data.unit_price,
-                discount=item_data.discount,
-                vat_rate=item_data.vat_rate,
-                line_total=line_total
-            )
-            db.add(db_item)
-        
-        db.commit()
-        db.refresh(db_invoice)
-        return db_invoice
-    
-    except Exception as e:
-        db.rollback()
-        print(f"DEBUG: Error creating invoice: {str(e)}")
-        print(f"DEBUG: Error type: {type(e)}")
-        import traceback
-        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
-        
-        # Check if it's a duplicate key error
-        if "duplicate key" in str(e) and "invoice_number" in str(e):
-            raise HTTPException(
-                status_code=500,
-                detail="Unable to generate unique invoice number. Please try again."
-            )
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to create invoice: {str(e)}"
-            )
-
-@router.post("/", response_model=InvoiceResponse)
-async def create_invoice(
-    invoice: InvoiceCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-    tenant_id: int = Depends(get_current_tenant)
-):
-    """Create a new invoice."""
-    # Use company_id with fallback, same as other endpoints for consistency
-    company_id = current_user.company_id or 1
-    
-    try:
-        # Debug: Print incoming data
-        print(f"DEBUG: Invoice data: {invoice.dict()}")
-        print(f"DEBUG: Company ID: {company_id}, Tenant ID: {tenant_id}")
-        
-        # Generate invoice number with the correct company_id and tenant_id
-        invoice_number = generate_invoice_number(db, company_id, tenant_id)
-        print(f"DEBUG: Generated invoice number: {invoice_number}")
-        
-        # Create invoice
-        invoice_data = invoice.dict(exclude={"items"})
-        print(f"DEBUG: Invoice data for creation: {invoice_data}")
-        
-        db_invoice = Invoice(
-            **invoice_data,
-            invoice_number=invoice_number,
-            created_by_id=current_user.id,
-            company_id=company_id,
-            tenant_id=tenant_id
-        )
-        print(f"DEBUG: Invoice object created successfully")
-        
-        # Calculate totals from items
-        subtotal = Decimal('0')
-        for item_data in invoice.items:
-            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
-            if item_data.discount:
-                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
-            
-            item_vat = line_total * Decimal(str(item_data.vat_rate)) / Decimal('100')
-            subtotal += line_total
-        
-        db_invoice.subtotal = subtotal
-        db_invoice.vat_amount = subtotal * Decimal('0.12')  # 12% VAT
-        db_invoice.total_amount = subtotal + db_invoice.vat_amount
-        db_invoice.remaining_amount = db_invoice.total_amount
-        
-        db.add(db_invoice)
-        db.flush()  # Get invoice ID
-        
-        # Create invoice items
-        for item_data in invoice.items:
-            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
-            if item_data.discount:
-                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
+            # Use provided line_total or calculate if not provided
+            if hasattr(item_data, 'line_total') and item_data.line_total is not None:
+                line_total = Decimal(str(item_data.line_total))
+            else:
+                line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
+                if item_data.discount:
+                    line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
             
             db_item = InvoiceItem(
                 invoice_id=db_invoice.id,
@@ -293,6 +208,22 @@ async def get_invoice(
     return invoice
 
 # Legacy route for frontend compatibility
+@router.get("/invoices", response_model=List[InvoiceResponse])
+async def get_invoices_legacy(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[InvoiceStatus] = None,
+    customer_name: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
+):
+    """Legacy route for frontend compatibility - redirects to main get_invoices."""
+    return get_invoices(skip, limit, status, customer_name, start_date, end_date, db, current_user, tenant_id)
+
+# Legacy route for frontend compatibility
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice_legacy(
     invoice_id: int,
@@ -325,6 +256,47 @@ async def update_invoice(
         raise HTTPException(status_code=404, detail="Invoice not found")
     
     update_data = invoice_update.dict(exclude_unset=True)
+    
+    # Handle items update if provided
+    if 'items' in update_data and update_data['items']:
+        # Delete existing items
+        db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice_id).delete()
+        
+        # Recalculate totals
+        subtotal = Decimal('0')
+        
+        # Create new items
+        for item_data in update_data['items']:
+            # Use provided line_total or calculate if not provided
+            if hasattr(item_data, 'line_total') and item_data.line_total is not None:
+                line_total = Decimal(str(item_data.line_total))
+            else:
+                line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
+                if item_data.discount:
+                    line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
+            
+            db_item = InvoiceItem(
+                invoice_id=invoice_id,
+                description=item_data.description,
+                quantity=item_data.quantity,
+                unit_price=item_data.unit_price,
+                discount=item_data.discount,
+                vat_rate=item_data.vat_rate,
+                line_total=line_total
+            )
+            db.add(db_item)
+            subtotal += line_total
+        
+        # Update invoice totals
+        invoice.subtotal = subtotal
+        invoice.vat_amount = subtotal * Decimal('0.12')  # 12% VAT
+        invoice.total_amount = subtotal + invoice.vat_amount
+        invoice.remaining_amount = invoice.total_amount - invoice.paid_amount
+        
+        # Remove items from update_data to avoid conflicts
+        del update_data['items']
+    
+    # Update other fields
     for field, value in update_data.items():
         setattr(invoice, field, value)
     
@@ -366,7 +338,6 @@ async def send_invoice(
     
     invoice.status = InvoiceStatus.SENT
     db.commit()
-    
     return {"message": "Invoice sent successfully"}
 
 # Legacy route for frontend compatibility
@@ -414,7 +385,6 @@ async def mark_invoice_paid(
         invoice.status = InvoiceStatus.SENT
     
     db.commit()
-    
     return {"message": "Payment recorded successfully"}
 
 # Legacy route for frontend compatibility
@@ -455,7 +425,6 @@ async def delete_invoice(
     # Delete invoice
     db.delete(invoice)
     db.commit()
-    
     return {"message": "Invoice deleted successfully"}
 
 # Legacy route for frontend compatibility
@@ -522,3 +491,15 @@ async def get_invoices_summary(
         "total_outstanding": float(total_outstanding),
         "overdue_invoices": overdue_invoices
     }
+
+# Legacy route for frontend compatibility
+@router.get("/invoices/summary")
+async def get_invoices_summary_legacy(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    tenant_id: int = Depends(get_current_tenant)
+):
+    """Legacy route for frontend compatibility - redirects to main get_invoices_summary."""
+    return get_invoices_summary(start_date, end_date, db, current_user, tenant_id)

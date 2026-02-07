@@ -10,8 +10,9 @@ class InvoiceItemBase(BaseModel):
     unit_price: Decimal
     discount: Optional[Decimal] = 0
     vat_rate: Optional[Decimal] = 12
+    line_total: Optional[Decimal] = None
     
-    @validator('quantity', 'unit_price', 'discount', 'vat_rate', pre=True)
+    @validator('quantity', 'unit_price', 'discount', 'vat_rate', 'line_total', pre=True)
     def parse_decimal(cls, v):
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
@@ -26,6 +27,7 @@ class InvoiceItemUpdate(BaseModel):
     unit_price: Optional[Decimal] = None
     discount: Optional[Decimal] = None
     vat_rate: Optional[Decimal] = None
+    line_total: Optional[Decimal] = None
 
 class InvoiceItemResponse(InvoiceItemBase):
     id: int
@@ -66,6 +68,22 @@ class InvoiceBase(BaseModel):
     remaining_amount: Optional[Decimal] = None
     status: Optional[InvoiceStatus] = None
     
+    @validator('issue_date', 'due_date', 'recurring_end_date', 'paid_date', pre=True)
+    def parse_datetime(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            # Handle date strings from frontend (YYYY-MM-DD format)
+            if len(v) == 10 and '-' in v:  # Simple date format
+                return datetime.strptime(v, '%Y-%m-%d')
+            else:
+                # Try ISO format
+                try:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00'))
+                except ValueError:
+                    pass
+        return v
+    
     @validator('paid_amount', 'subtotal', 'vat_amount', 'total_amount', 'remaining_amount', pre=True)
     def parse_decimal(cls, v):
         if v is None:
@@ -94,7 +112,24 @@ class InvoiceUpdate(BaseModel):
     status: Optional[InvoiceStatus] = None
     issue_date: Optional[datetime] = None
     due_date: Optional[datetime] = None
+    paid_date: Optional[datetime] = None
     contact_id: Optional[int] = None
+    
+    @validator('issue_date', 'due_date', 'recurring_end_date', 'paid_date', pre=True)
+    def parse_datetime(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            # Handle date strings from frontend (YYYY-MM-DD format)
+            if len(v) == 10 and '-' in v:  # Simple date format
+                return datetime.strptime(v, '%Y-%m-%d')
+            else:
+                # Try ISO format
+                try:
+                    return datetime.fromisoformat(v.replace('Z', '+00:00'))
+                except ValueError:
+                    pass
+        return v
 
 class InvoiceResponse(InvoiceBase):
     id: int
