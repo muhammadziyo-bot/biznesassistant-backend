@@ -131,16 +131,96 @@ async def create_invoice(
                 detail=f"Failed to create invoice: {str(e)}"
             )
 
-# Legacy route for frontend compatibility
-@router.post("/invoices", response_model=InvoiceResponse)
-async def create_invoice_legacy(
+@router.post("/", response_model=InvoiceResponse)
+async def create_invoice(
     invoice: InvoiceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     tenant_id: int = Depends(get_current_tenant)
 ):
-    """Legacy route for frontend compatibility - redirects to main create_invoice."""
-    return await create_invoice(invoice, db, current_user, tenant_id)
+    """Create a new invoice."""
+    # Use company_id with fallback, same as other endpoints for consistency
+    company_id = current_user.company_id or 1
+    
+    try:
+        # Debug: Print incoming data
+        print(f"DEBUG: Invoice data: {invoice.dict()}")
+        print(f"DEBUG: Company ID: {company_id}, Tenant ID: {tenant_id}")
+        
+        # Generate invoice number with the correct company_id and tenant_id
+        invoice_number = generate_invoice_number(db, company_id, tenant_id)
+        print(f"DEBUG: Generated invoice number: {invoice_number}")
+        
+        # Create invoice
+        invoice_data = invoice.dict(exclude={"items"})
+        print(f"DEBUG: Invoice data for creation: {invoice_data}")
+        
+        db_invoice = Invoice(
+            **invoice_data,
+            invoice_number=invoice_number,
+            created_by_id=current_user.id,
+            company_id=company_id,
+            tenant_id=tenant_id
+        )
+        print(f"DEBUG: Invoice object created successfully")
+        
+        # Calculate totals from items
+        subtotal = Decimal('0')
+        for item_data in invoice.items:
+            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
+            if item_data.discount:
+                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
+            
+            item_vat = line_total * Decimal(str(item_data.vat_rate)) / Decimal('100')
+            subtotal += line_total
+        
+        db_invoice.subtotal = subtotal
+        db_invoice.vat_amount = subtotal * Decimal('0.12')  # 12% VAT
+        db_invoice.total_amount = subtotal + db_invoice.vat_amount
+        db_invoice.remaining_amount = db_invoice.total_amount
+        
+        db.add(db_invoice)
+        db.flush()  # Get invoice ID
+        
+        # Create invoice items
+        for item_data in invoice.items:
+            line_total = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price))
+            if item_data.discount:
+                line_total *= (Decimal('1') - Decimal(str(item_data.discount)) / Decimal('100'))
+            
+            db_item = InvoiceItem(
+                invoice_id=db_invoice.id,
+                description=item_data.description,
+                quantity=item_data.quantity,
+                unit_price=item_data.unit_price,
+                discount=item_data.discount,
+                vat_rate=item_data.vat_rate,
+                line_total=line_total
+            )
+            db.add(db_item)
+        
+        db.commit()
+        db.refresh(db_invoice)
+        return db_invoice
+    
+    except Exception as e:
+        db.rollback()
+        print(f"DEBUG: Error creating invoice: {str(e)}")
+        print(f"DEBUG: Error type: {type(e)}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        
+        # Check if it's a duplicate key error
+        if "duplicate key" in str(e) and "invoice_number" in str(e):
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to generate unique invoice number. Please try again."
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create invoice: {str(e)}"
+            )
 
 @router.get("/", response_model=List[InvoiceResponse])
 async def get_invoices(
